@@ -44,19 +44,37 @@ class Arm(object):
 
     def rotate_shoulder(self, theta):
 
-        #rotates elbow joint around shoulder joint
-       self.elbow_joint = (((self.elbow_joint[0]-self.shoulder_joint[0])*math.cos(theta))  - ((self.elbow_joint[1]-self.shoulder_joint[1])*math.sin(theta))+self.shoulder_joint[0],
-                           ((self.elbow_joint[0]-self.shoulder_joint[0])*math.sin(theta) )+ ((self.elbow_joint[1]-self.shoulder_joint[1])*math.cos(theta)) +self.shoulder_joint[1] )
-        #rotates wrist joint around shoulder joint (if elbow moves, wrist automatically moves)
-       self.wrist_joint = (((self.wrist_joint[0]-self.shoulder_joint[0])*math.cos(theta))  - ((self.wrist_joint[1]-self.shoulder_joint[1])*math.sin(theta))+self.shoulder_joint[0],
-                           ((self.wrist_joint[0]-self.shoulder_joint[0])*math.sin(theta) )+ ((self.wrist_joint[1]-self.shoulder_joint[1])*math.cos(theta)) +self.shoulder_joint[1] )
+        x1=((self.elbow_joint[0]-self.shoulder_joint[0])*math.cos(theta))  - ((self.elbow_joint[1]-self.shoulder_joint[1])*math.sin(theta))+self.shoulder_joint[0]
+        x2=((self.wrist_joint[0]-self.shoulder_joint[0])*math.cos(theta))  - ((self.wrist_joint[1]-self.shoulder_joint[1])*math.sin(theta))+self.shoulder_joint[0]
+        y1=((self.elbow_joint[0]-self.shoulder_joint[0])*math.sin(theta) )+ ((self.elbow_joint[1]-self.shoulder_joint[1])*math.cos(theta)) +self.shoulder_joint[1]
+        y2=((self.wrist_joint[0]-self.shoulder_joint[0])*math.sin(theta) )+ ((self.wrist_joint[1]-self.shoulder_joint[1])*math.cos(theta)) +self.shoulder_joint[1]
 
-    def rotate_elbow(self, theta):
-          #rotates wrist joint around elbow joint
-        self.wrist_joint = (((self.wrist_joint[0]-self.elbow_joint[0])*math.cos(theta))  - ((self.wrist_joint[1]-self.elbow_joint[1])*math.sin(theta))+self.elbow_joint[0],
-                           ((self.wrist_joint[0]-self.elbow_joint[0])*math.sin(theta) )+ ((self.wrist_joint[1]-self.elbow_joint[1])*math.cos(theta)) +self.elbow_joint[1] )
+        if (y1>0 and y2>0):
+           self.elbow_joint = (x1,
+                               y1)
+            #rotates wrist joint around shoulder joint (if elbow moves, wrist automatically moves)
+           self.wrist_joint = (x2,
+                               y2 )
+
+        y=((self.wrist_joint[0]-self.elbow_joint[0])*math.sin(theta) )+ ((self.wrist_joint[1]-self.elbow_joint[1])*math.cos(theta)) +self.elbow_joint[1]
+        if(y>0):
+        #rotates wrist joint around elbow joint
+            self.wrist_joint = (((self.wrist_joint[0]-self.elbow_joint[0])*math.cos(theta))  - ((self.wrist_joint[1]-self.elbow_joint[1])*math.sin(theta))+self.elbow_joint[0],
+                               y )
+
+    def random_arm_pos(self):
+        theta1=random.randint(0, 360)*(math.pi/180)
+        changed=False
+        if(self.shoulder_joint[1]+self.L*math.sin(theta1)>0):
+            self.elbow_joint=(self.shoulder_joint[0]+self.L*math.cos(theta1),self.shoulder_joint[1]+self.L*math.sin(theta1))
 
 
+            while(changed==False):
+                theta2=theta1+random.randint(0, 160)*(math.pi/180) #160 degrees is in my opinion the most the arm can bend and can only bend one way
+                if((self.elbow_joint[1]+self.L*math.sin(theta2))>0):
+                     self.wrist_joint=(self.elbow_joint[0]+self.L*math.cos(theta2),self.elbow_joint[1]+self.L*math.sin(theta2))
+                     self.canvas_ax.add_patch(plt.Circle((self.wrist_joint), radius=0.1, color='b', fill=True)) #draws visited space
+                     changed=True
 
     def redraw(self):
         # Adjust arm segments
@@ -68,7 +86,7 @@ class Arm(object):
 
         self.upper_arm_line.set_data(upper_arm_xs, upper_arm_ys)
         self.lower_arm_line.set_data(lower_arm_xs, lower_arm_ys)
-        
+
         # Adjust arm joints
         self.shoulder_joint_circle.center = self.shoulder_joint
         self.elbow_joint_circle.center = self.elbow_joint
@@ -103,8 +121,9 @@ def main():
     #train_network()
     arm = Arm(origin=12)
     while True:
-        arm.rotate_shoulder(theta=random.randint(0, 360)) # Looks retarded as f*ck
-        arm.rotate_elbow(theta=random.randint(0, 360)) # Looks retarded as f*ck
+    #    arm.rotate_shoulder(theta=random.randint(0, 180)) # Looks retarded as f*ck
+   #     arm.rotate_elbow(theta=random.randint(0, 360)) # Looks retarded as f*ck
+        arm.random_arm_pos()
         arm.redraw()
 
 if __name__ == '__main__':
