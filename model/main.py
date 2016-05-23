@@ -19,6 +19,9 @@ class Arm(object):
         self.elbow_joint = (self.origin, self.L)
         self.wrist_joint = (self.origin, self.L*2)
 
+        self.reached_points = []
+
+        self.visualize = True
         self._init_graphics()
 
     def _init_graphics(self):
@@ -29,52 +32,55 @@ class Arm(object):
         self.canvas_ax.set_autoscale_on(False)
 
         # Init drawable elements
+        ## ... arm
         self.upper_arm_line = plt.Line2D([], [], linewidth=2, color='k')
         self.lower_arm_line = plt.Line2D([], [], linewidth=2, color='k')
         self.canvas_ax.add_line(self.upper_arm_line)
         self.canvas_ax.add_line(self.lower_arm_line)
 
+        ## ... joints
         self.shoulder_joint_circle = plt.Circle((0,0), radius=0.2, color='k', fill=True)
-        self.elbow_joint_circle = plt.Circle((0,0), radius=0.2, color='k', fill=True)
+        self.elbow_joint_circle    = plt.Circle((0,0), radius=0.2, color='k', fill=True)
         self.canvas_ax.add_patch(self.shoulder_joint_circle)
         self.canvas_ax.add_patch(self.elbow_joint_circle)
 
+        ## ... reachable space
         self.reachable_space_circle = plt.Circle((self.origin, 0), radius=self.L*2, color='b', fill=False)
         self.canvas_ax.add_patch(self.reachable_space_circle)
+        self.reachable_scatter = plt.scatter([], [])
+
 
     def rotate_shoulder(self, theta):
+        x1 = ((self.elbow_joint[0] - self.shoulder_joint[0]) * math.cos(theta)) - ((self.elbow_joint[1] - self.shoulder_joint[1]) * math.sin(theta)) + self.shoulder_joint[0]
+        x2 = ((self.wrist_joint[0] - self.shoulder_joint[0]) * math.cos(theta)) - ((self.wrist_joint[1] - self.shoulder_joint[1]) * math.sin(theta)) + self.shoulder_joint[0]
+        y1 = ((self.elbow_joint[0] - self.shoulder_joint[0]) * math.sin(theta)) + ((self.elbow_joint[1] - self.shoulder_joint[1]) * math.cos(theta)) + self.shoulder_joint[1]
+        y2 = ((self.wrist_joint[0] - self.shoulder_joint[0]) * math.sin(theta)) + ((self.wrist_joint[1] - self.shoulder_joint[1]) * math.cos(theta)) + self.shoulder_joint[1]
 
-        x1=((self.elbow_joint[0]-self.shoulder_joint[0])*math.cos(theta))  - ((self.elbow_joint[1]-self.shoulder_joint[1])*math.sin(theta))+self.shoulder_joint[0]
-        x2=((self.wrist_joint[0]-self.shoulder_joint[0])*math.cos(theta))  - ((self.wrist_joint[1]-self.shoulder_joint[1])*math.sin(theta))+self.shoulder_joint[0]
-        y1=((self.elbow_joint[0]-self.shoulder_joint[0])*math.sin(theta) )+ ((self.elbow_joint[1]-self.shoulder_joint[1])*math.cos(theta)) +self.shoulder_joint[1]
-        y2=((self.wrist_joint[0]-self.shoulder_joint[0])*math.sin(theta) )+ ((self.wrist_joint[1]-self.shoulder_joint[1])*math.cos(theta)) +self.shoulder_joint[1]
+        if y1 > 0 and y2 > 0:
+           self.elbow_joint = (x1, y1)
+           # Rotates wrist joint around shoulder joint (if elbow moves, wrist automatically moves)
+           self.wrist_joint = (x2, y2)
 
-        if (y1>0 and y2>0):
-           self.elbow_joint = (x1,
-                               y1)
-            #rotates wrist joint around shoulder joint (if elbow moves, wrist automatically moves)
-           self.wrist_joint = (x2,
-                               y2 )
-
-        y=((self.wrist_joint[0]-self.elbow_joint[0])*math.sin(theta) )+ ((self.wrist_joint[1]-self.elbow_joint[1])*math.cos(theta)) +self.elbow_joint[1]
-        if(y>0):
-        #rotates wrist joint around elbow joint
-            self.wrist_joint = (((self.wrist_joint[0]-self.elbow_joint[0])*math.cos(theta))  - ((self.wrist_joint[1]-self.elbow_joint[1])*math.sin(theta))+self.elbow_joint[0],
-                               y )
+        y = ((self.wrist_joint[0] - self.elbow_joint[0]) * math.sin(theta)) + ((self.wrist_joint[1] - self.elbow_joint[1]) * math.cos(theta)) + self.elbow_joint[1]
+        # Rotates wrist joint around elbow joint
+        if y > 0:
+            self.wrist_joint = (((self.wrist_joint[0] - self.elbow_joint[0]) * math.cos(theta)) - ((self.wrist_joint[1] - self.elbow_joint[1]) * math.sin(theta)) + self.elbow_joint[0],
+                                y)
 
     def random_arm_pos(self):
-        theta1=random.randint(0, 360)*(math.pi/180)
-        changed=False
-        if(self.shoulder_joint[1]+self.L*math.sin(theta1)>0):
-            self.elbow_joint=(self.shoulder_joint[0]+self.L*math.cos(theta1),self.shoulder_joint[1]+self.L*math.sin(theta1))
+        theta1  = random.randint(0, 360) * (math.pi / 180)
+        changed = False
+        if self.shoulder_joint[1] + self.L * math.sin(theta1) > 0:
+            self.elbow_joint = (self.shoulder_joint[0] + self.L * math.cos(theta1), 
+                                self.shoulder_joint[1] + self.L * math.sin(theta1))
 
-
-            while(changed==False):
-                theta2=theta1+random.randint(0, 160)*(math.pi/180) #160 degrees is in my opinion the most the arm can bend and can only bend one way
-                if((self.elbow_joint[1]+self.L*math.sin(theta2))>0):
-                     self.wrist_joint=(self.elbow_joint[0]+self.L*math.cos(theta2),self.elbow_joint[1]+self.L*math.sin(theta2))
-                     self.canvas_ax.add_patch(plt.Circle((self.wrist_joint), radius=0.1, color='b', fill=True)) #draws visited space
-                     changed=True
+            while changed == False:
+                theta2 = theta1 + random.randint(0, 160) * (math.pi / 180) #160 degrees is in my opinion the most the arm can bend and can only bend one way
+                if self.elbow_joint[1] + self.L * math.sin(theta2) > 0:
+                    self.wrist_joint = (self.elbow_joint[0] + self.L * math.cos(theta2),
+                                        self.elbow_joint[1] + self.L * math.sin(theta2))
+                    self.reached_points += self.wrist_joint
+                    changed = True
 
     def redraw(self):
         # Adjust arm segments
@@ -91,9 +97,12 @@ class Arm(object):
         self.shoulder_joint_circle.center = self.shoulder_joint
         self.elbow_joint_circle.center = self.elbow_joint
 
+        # Update scatter plot of reached points
+        self.reachable_scatter.set_offsets(np.array(self.reached_points))
+
         # Redraw
         plt.plot()
-        plt.pause(0.05)
+        plt.pause(0.00001)
 
 def init_network(input_var):
     l_in  = InputLayer((None,9), input_var=input_var)
