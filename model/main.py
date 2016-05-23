@@ -4,18 +4,12 @@
 #import lasagne
 #import theano
 import matplotlib.pyplot as plt
-import matplotlib.lines as lines
 import math
 import numpy as np
+import time
+import random
 
 from IPython import embed
-
-def init_network(input_var):
-    l_in  = InputLayer((None,9), input_var=input_var)
-    l_h   = DenseLayer(l_in, num_units=7, nonlinearity=sigmoid)
-    l_out = DenseLayer(l_h, num_units=6, nonlinearity=sigmoid)
-
-    return l_out
 
 class Arm(object):
     def __init__(self, origin=0):
@@ -24,8 +18,8 @@ class Arm(object):
         self.shoulder_joint = (self.origin, 0)
         self.elbow_joint = (self.origin, self.L)
         self.wrist_joint = (self.origin, self.L*2)
-        self.canvas, self.canvas_ax = plt.subplots()
-        self.canvas_ax = plt.axes(xlim=(0, self.L*10), ylim=(0, self.L*10))
+
+        self.init_graphics()
 
     def rotate_shoulder(self, angle):
         self.elbow_joint = (math.cos(angle) * self.elbow_joint[0] - math.sin(angle) * self.elbow_joint[1],
@@ -35,20 +29,54 @@ class Arm(object):
         self.wrist_joint = (math.cos(angle) * self.wrist_joint[0] - math.sin(angle) * self.wrist_joint[1],
                             math.sin(angle) * self.wrist_joint[0] + math.cos(angle) * self.wrist_joint[1])
 
+    def init_graphics(self):
+        # Init figure
+        plt.ion()
+        self.canvas, self.canvas_ax = plt.subplots()
+        self.canvas_ax = plt.axes(xlim=(0, self.L*5), ylim=(0, self.L*5))
+        self.canvas_ax.set_autoscale_on(False)
+
+        # Init drawable elements
+        self.upper_arm_line = plt.Line2D([], [], linewidth=2, color='k')
+        self.lower_arm_line = plt.Line2D([], [], linewidth=2, color='k')
+        self.canvas_ax.add_line(self.upper_arm_line)
+        self.canvas_ax.add_line(self.lower_arm_line)
+
+        self.shoulder_joint_circle = plt.Circle((0,0), radius=0.2, color='k', fill=True)
+        self.elbow_joint_circle = plt.Circle((0,0), radius=0.2, color='k', fill=True)
+        self.canvas_ax.add_patch(self.shoulder_joint_circle)
+        self.canvas_ax.add_patch(self.elbow_joint_circle)
+
+        self.reachable_space_circle = plt.Circle((self.origin, 0), radius=self.L*2, color='b', fill=False)
+        self.canvas_ax.add_patch(self.reachable_space_circle)
+
     def redraw(self):
-        # TODO: make this redrawable
+        # Adjust arm segments
         upper_arm = [self.shoulder_joint, self.elbow_joint]
         lower_arm = [self.elbow_joint, self.wrist_joint]
 
         (upper_arm_xs, upper_arm_ys) = zip(*upper_arm)
         (lower_arm_xs, lower_arm_ys) = zip(*lower_arm)
 
-        self.canvas_ax.add_line(lines.Line2D(upper_arm_xs, upper_arm_ys, linewidth=2, color='black'))
-        self.canvas_ax.add_line(lines.Line2D(lower_arm_xs, lower_arm_ys, linewidth=2, color='black'))
-        plt.plot()
-        plt.show()
+        self.upper_arm_line.set_data(upper_arm_xs, upper_arm_ys)
+        self.lower_arm_line.set_data(lower_arm_xs, lower_arm_ys)
+        
+        # Adjust arm joints
+        self.shoulder_joint_circle.center = self.shoulder_joint
+        self.elbow_joint_circle.center = self.elbow_joint
 
-def main():
+        # Redraw
+        plt.plot()
+        plt.pause(0.05)
+
+def init_network(input_var):
+    l_in  = InputLayer((None,9), input_var=input_var)
+    l_h   = DenseLayer(l_in, num_units=7, nonlinearity=sigmoid)
+    l_out = DenseLayer(l_h, num_units=6, nonlinearity=sigmoid)
+
+    return l_out
+
+def train_network():
     print 'Getting network..'
     input_var = T.irow('inpt')
     target_var = T.vector('target')
@@ -63,8 +91,12 @@ def main():
     train_fn = theano.function([input_var, target_var], loss, updates=updates)
     embed()
 
+def main():
+    #train_network()
+    arm = Arm(origin=12)
+    while True:
+        arm.rotate_shoulder(angle=random.random()) # Looks retarded as f*ck
+        arm.redraw()
+
 if __name__ == '__main__':
-    #main()
-    arm = Arm(origin=4)
-    arm.rotate_elbow(-.3)
-    arm.redraw()
+    main()
