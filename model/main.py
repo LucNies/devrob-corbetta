@@ -42,13 +42,19 @@ class Arm(object):
         self.reachable_space_circle = plt.Circle((self.origin, 0), radius=self.L*2, color='b', fill=False)
         self.canvas_ax.add_patch(self.reachable_space_circle)
 
-    def rotate_shoulder(self, angle):
-        self.elbow_joint = (math.cos(angle) * self.elbow_joint[0] - math.sin(angle) * self.elbow_joint[1],
-                            math.sin(angle) * self.elbow_joint[0] + math.cos(angle) * self.elbow_joint[1])
+    def rotate_shoulder(self, theta):
+        theta = math.radians(theta)
+        self.elbow_joint = (self.shoulder_joint[0] + self.L * math.cos(theta),
+                            self.shoulder_joint[1] + self.L * math.sin(theta))
+        #self.elbow_joint = (math.cos(theta) * self.elbow_joint[0] - math.sin(theta) * self.elbow_joint[1] + self.origin,
+        #                    math.sin(theta) * self.elbow_joint[0] + math.cos(theta) * self.elbow_joint[1])
 
-    def rotate_elbow(self, angle):
-        self.wrist_joint = (math.cos(angle) * self.wrist_joint[0] - math.sin(angle) * self.wrist_joint[1],
-                            math.sin(angle) * self.wrist_joint[0] + math.cos(angle) * self.wrist_joint[1])
+    def rotate_elbow(self, theta):
+        theta = math.radians(theta)
+        self.wrist_joint = (self.elbow_joint[0] + self.L * math.cos(theta),
+                            self.elbow_joint[1] + self.L * math.sin(theta))
+        #self.wrist_joint = (math.cos(theta) * self.wrist_joint[0] - math.sin(theta) * self.wrist_joint[1],
+        #                    math.sin(theta) * self.wrist_joint[0] + math.cos(theta) * self.wrist_joint[1])
 
     def redraw(self):
         # Adjust arm segments
@@ -95,7 +101,8 @@ def main():
     #train_network()
     arm = Arm(origin=12)
     while True:
-        arm.rotate_elbow(angle=random.randint(0, 360)) # Looks retarded as f*ck
+        arm.rotate_shoulder(theta=random.randint(0, 360)) # Looks retarded as f*ck
+        arm.rotate_elbow(theta=random.randint(0, 360)) # Looks retarded as f*ck
         arm.redraw()
 
 if __name__ == '__main__':
