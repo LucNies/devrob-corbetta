@@ -25,7 +25,7 @@ class Arm(object):
         # Init figure
         plt.ion()
         self.canvas, self.canvas_ax = plt.subplots()
-        self.canvas_ax = plt.axes(xlim=(0, self.L*5), ylim=(0, self.L*5))
+        self.canvas_ax = plt.axes(xlim=(-25, self.L*5), ylim=(-25, self.L*5))#to make it better visiable as it rotates in 360 degrees
         self.canvas_ax.set_autoscale_on(False)
 
         # Init drawable elements
@@ -43,18 +43,20 @@ class Arm(object):
         self.canvas_ax.add_patch(self.reachable_space_circle)
 
     def rotate_shoulder(self, theta):
-        theta = math.radians(theta)
-        self.elbow_joint = (self.shoulder_joint[0] + self.L * math.cos(theta),
-                            self.shoulder_joint[1] + self.L * math.sin(theta))
-        #self.elbow_joint = (math.cos(theta) * self.elbow_joint[0] - math.sin(theta) * self.elbow_joint[1] + self.origin,
-        #                    math.sin(theta) * self.elbow_joint[0] + math.cos(theta) * self.elbow_joint[1])
+
+        #rotates elbow joint around shoulder joint
+       self.elbow_joint = (((self.elbow_joint[0]-self.shoulder_joint[0])*math.cos(theta))  - ((self.elbow_joint[1]-self.shoulder_joint[1])*math.sin(theta))+self.shoulder_joint[0],
+                           ((self.elbow_joint[0]-self.shoulder_joint[0])*math.sin(theta) )+ ((self.elbow_joint[1]-self.shoulder_joint[1])*math.cos(theta)) +self.shoulder_joint[1] )
+        #rotates wrist joint around shoulder joint (if elbow moves, wrist automatically moves)
+       self.wrist_joint = (((self.wrist_joint[0]-self.shoulder_joint[0])*math.cos(theta))  - ((self.wrist_joint[1]-self.shoulder_joint[1])*math.sin(theta))+self.shoulder_joint[0],
+                           ((self.wrist_joint[0]-self.shoulder_joint[0])*math.sin(theta) )+ ((self.wrist_joint[1]-self.shoulder_joint[1])*math.cos(theta)) +self.shoulder_joint[1] )
 
     def rotate_elbow(self, theta):
-        theta = math.radians(theta)
-        self.wrist_joint = (self.elbow_joint[0] + self.L * math.cos(theta),
-                            self.elbow_joint[1] + self.L * math.sin(theta))
-        #self.wrist_joint = (math.cos(theta) * self.wrist_joint[0] - math.sin(theta) * self.wrist_joint[1],
-        #                    math.sin(theta) * self.wrist_joint[0] + math.cos(theta) * self.wrist_joint[1])
+          #rotates wrist joint around elbow joint
+        self.wrist_joint = (((self.wrist_joint[0]-self.elbow_joint[0])*math.cos(theta))  - ((self.wrist_joint[1]-self.elbow_joint[1])*math.sin(theta))+self.elbow_joint[0],
+                           ((self.wrist_joint[0]-self.elbow_joint[0])*math.sin(theta) )+ ((self.wrist_joint[1]-self.elbow_joint[1])*math.cos(theta)) +self.elbow_joint[1] )
+
+
 
     def redraw(self):
         # Adjust arm segments
