@@ -19,17 +19,9 @@ class Arm(object):
         self.elbow_joint = (self.origin, self.L)
         self.wrist_joint = (self.origin, self.L*2)
 
-        self.init_graphics()
+        self._init_graphics()
 
-    def rotate_shoulder(self, angle):
-        self.elbow_joint = (math.cos(angle) * self.elbow_joint[0] - math.sin(angle) * self.elbow_joint[1],
-                            math.sin(angle) * self.elbow_joint[0] + math.cos(angle) * self.elbow_joint[1])
-
-    def rotate_elbow(self, angle):
-        self.wrist_joint = (math.cos(angle) * self.wrist_joint[0] - math.sin(angle) * self.wrist_joint[1],
-                            math.sin(angle) * self.wrist_joint[0] + math.cos(angle) * self.wrist_joint[1])
-
-    def init_graphics(self):
+    def _init_graphics(self):
         # Init figure
         plt.ion()
         self.canvas, self.canvas_ax = plt.subplots()
@@ -49,6 +41,14 @@ class Arm(object):
 
         self.reachable_space_circle = plt.Circle((self.origin, 0), radius=self.L*2, color='b', fill=False)
         self.canvas_ax.add_patch(self.reachable_space_circle)
+
+    def rotate_shoulder(self, angle):
+        self.elbow_joint = (math.cos(angle) * self.elbow_joint[0] - math.sin(angle) * self.elbow_joint[1],
+                            math.sin(angle) * self.elbow_joint[0] + math.cos(angle) * self.elbow_joint[1])
+
+    def rotate_elbow(self, angle):
+        self.wrist_joint = (math.cos(angle) * self.wrist_joint[0] - math.sin(angle) * self.wrist_joint[1],
+                            math.sin(angle) * self.wrist_joint[0] + math.cos(angle) * self.wrist_joint[1])
 
     def redraw(self):
         # Adjust arm segments
@@ -95,7 +95,7 @@ def main():
     #train_network()
     arm = Arm(origin=12)
     while True:
-        arm.rotate_shoulder(angle=random.random()) # Looks retarded as f*ck
+        arm.rotate_elbow(angle=random.randint(0, 360)) # Looks retarded as f*ck
         arm.redraw()
 
 if __name__ == '__main__':
