@@ -3,6 +3,11 @@ import math
 import numpy as np
 import random
 import pickle
+import time
+from sympy import *
+from sympy.geometry import *
+
+from IPython import embed
 
 class Arm(object):
     def __init__(self, origin=0, visualize=True):
@@ -83,11 +88,126 @@ class Arm(object):
             plt.plot()
             plt.pause(0.00001)
 
+class Eyes(object):
+    def __init__(self, origin):
+        self.center_origin = origin
+        self.inter_eye_distance = 6
+        self.left_eye_angle = 0
+        self.right_eye_angle = 0
+        self.attended_points = []
+        self.max_distance = 15
+        self.visual_space = Circle(Point(self.center_origin, 0), self.max_distance)
+        self.max_angle = math.radians(60)
+
+        self.calculate_lines()
+        self._init_graphics()
+
+    def _init_graphics(self):
+        stime = time.time()
+        plt.ion()
+        self.canvas, self.canvas_ax = plt.subplots()
+        self.canvas_ax = plt.axes(xlim=(-25, 25), ylim=(-25, 25))
+
+        # Init elements
+        self.left_eye_circle = plt.Circle((self.center_origin - self.inter_eye_distance / 2, 0), radius=0.5, fill=False)
+        self.right_eye_circle = plt.Circle((self.center_origin + self.inter_eye_distance / 2, 0), radius=0.5, fill=False)
+        self.visual_space_circle = plt.Circle((self.center_origin, 0), radius=self.max_distance, fill=False)
+        self.canvas_ax.add_patch(self.left_eye_circle)
+        self.canvas_ax.add_patch(self.right_eye_circle)
+        self.canvas_ax.add_patch(self.visual_space_circle)
+
+        self.canvas_ax.add_line(self.convert_to_Line2D(self.l_center_line))
+        self.canvas_ax.add_line(self.convert_to_Line2D(self.r_center_line))
+        self.canvas_ax.add_line(self.convert_to_Line2D(self.l_outer_bound))
+        self.canvas_ax.add_line(self.convert_to_Line2D(self.r_outer_bound))
+        self.canvas_ax.add_line(self.convert_to_Line2D(self.l_inner_bound))
+        self.canvas_ax.add_line(self.convert_to_Line2D(self.r_inner_bound))
+
+        self.reachable_scatter = plt.scatter([], [])
+        print '_init_graphics: %s' % (time.time() - stime)
+
+    def redraw(self):
+        self.reachable_scatter.set_offsets(self.attended_points)
+
+        plt.plot()
+        plt.pause(0.000001)
+
+    def random_angle(self, min, max):
+        return random.uniform(min, max)
+
+    def calc_angle_submissive_eye(self, angle):
+        focus_line = self.rotate_line(self.l_center_line, angle)
+        stime = time.time()
+        intersection_point = intersection(focus_line, self.visual_space)[0]
+
+        line = Line(Point(self.r_center_line.p1.x, 0), intersection_point)
+
+        angle_between = Line.angle_between(line, self.r_center_line)
+        print 'calc_angle_submissive_eye: %s' % (time.time() - stime)
+        return angle_between
+
+    def calculate_lines(self):
+        stime = time.time()
+        self.l_center_line = Line(Point(self.center_origin -self.inter_eye_distance / 2, 0),
+                                  Point(self.center_origin - self.inter_eye_distance / 2, math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2)**2)))
+        self.r_center_line = Line(Point(self.center_origin + self.inter_eye_distance / 2, 0),
+                                  Point(self.center_origin + self.inter_eye_distance / 2,
+                                        math.sqrt(self.max_distance ** 2 - (self.inter_eye_distance / 2) ** 2)))
+
+        self.l_outer_bound = self.rotate_line(self.l_center_line, + self.max_angle)
+        self.r_outer_bound = self.rotate_line(self.r_center_line, - self.max_angle)
+        self.l_inner_bound = self.rotate_line(self.l_center_line, - self.max_angle)
+        self.r_inner_bound = self.rotate_line(self.r_center_line, + self.max_angle)
+
+        self.min_angle = Line.angle_between(
+            Line(self.l_center_line.p1, self.get_pos_intersection(self.r_inner_bound, self.visual_space)),
+            self.l_center_line)
+        print 'calculate_lines: %s' % (time.time() - stime)
+
+    def convert_to_Line2D(self, line):
+        return plt.Line2D((line.p1.x, line.p2.x),
+                   (line.p1.y, line.p2.y))
+
+    def rotate_line(self, line, angle):
+        stime = time.time()
+        line_x = line.p1.x
+
+        rotated_x = math.cos(angle) * 0 - math.sin(angle) * line.p2.y
+        rotated_y = math.sin(angle) * 0 + math.cos(angle) * line.p2.y
+
+        temp_line = Line(Point(line_x, line.p1.y), Point(rotated_x + line_x, rotated_y))
+
+        intersection_point = self.get_pos_intersection(temp_line, self.visual_space)
+
+        new_line = Line(temp_line.p1, intersection_point)
+        print 'rotate_line: %s' % (time.time() - stime)
+        return new_line
+
+    def get_pos_intersection(self, e1, e2):
+        intersection_point = None
+        for point in intersection(e1, e2):
+            if point.y >= 0:
+                intersection_point = point
+
+        return intersection_point
+
+    def random_eye_pos(self):
+        stime = time.time()
+        # do stuff
+        rand_angle_leye = self.random_angle(-self.max_angle, self.min_angle)
+        angle_reye = self.random_angle(self.calc_angle_submissive_eye(rand_angle_leye), self.max_angle)
+        l_focus_line = self.rotate_line(self.l_center_line, rand_angle_leye)
+        r_focus_line = self.rotate_line(self.r_center_line, angle_reye)
+        focus_point = self.get_pos_intersection(l_focus_line, r_focus_line)
+        self.attended_points.append((focus_point.x, focus_point.y))
+        print 'random_eye_pos: %s' % (time.time() - stime)
+
 def save_data(arm):
     with open('output.dat', 'wb') as f_out:
         pickle.dump(arm.reached_points, f_out)
 
 def main():
+    ''''
     arm = Arm(origin=12, visualize=True)
     while len(arm.reached_points) < 1000000:
         arm.random_arm_pos()
@@ -97,6 +217,12 @@ def main():
             print len(arm.reached_points)
 
     save_data(arm)
+    '''
+
+    eyes = Eyes(origin=0)
+    while True:
+        eyes.random_eye_pos()
+        eyes.redraw()
 
 if __name__ == '__main__':
     main()
