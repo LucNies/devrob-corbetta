@@ -4,8 +4,10 @@ import numpy as np
 import random
 import pickle
 import time
-from sympy import *
-from sympy.geometry import *
+from sympy.geometry import Line as SymLine
+from sympy.geometry import Point as SymPoint
+from shapely.geometry import Point, LineString
+from shapely import affinity
 
 from IPython import embed
 
@@ -92,18 +94,15 @@ class Eyes(object):
     def __init__(self, origin):
         self.center_origin = origin
         self.inter_eye_distance = 6
-        self.left_eye_angle = 0
-        self.right_eye_angle = 0
         self.attended_points = []
         self.max_distance = 15
-        self.visual_space = Circle(Point(self.center_origin, 0), self.max_distance)
-        self.max_angle = math.radians(60)
+        self.visual_space = Point(self.center_origin, 0).buffer(self.max_distance)
+        self.max_angle = 60
 
         self.calculate_lines()
         self._init_graphics()
 
     def _init_graphics(self):
-        stime = time.time()
         plt.ion()
         self.canvas, self.canvas_ax = plt.subplots()
         self.canvas_ax = plt.axes(xlim=(-25, 25), ylim=(-25, 25))
@@ -116,91 +115,96 @@ class Eyes(object):
         self.canvas_ax.add_patch(self.right_eye_circle)
         self.canvas_ax.add_patch(self.visual_space_circle)
 
-        self.canvas_ax.add_line(self.convert_to_Line2D(self.l_center_line))
-        self.canvas_ax.add_line(self.convert_to_Line2D(self.r_center_line))
-        self.canvas_ax.add_line(self.convert_to_Line2D(self.l_outer_bound))
-        self.canvas_ax.add_line(self.convert_to_Line2D(self.r_outer_bound))
-        self.canvas_ax.add_line(self.convert_to_Line2D(self.l_inner_bound))
-        self.canvas_ax.add_line(self.convert_to_Line2D(self.r_inner_bound))
+        self.canvas_ax.add_line(self.to_Line2D(self.l_center_line))
+        self.canvas_ax.add_line(self.to_Line2D(self.r_center_line))
+        self.canvas_ax.add_line(self.to_Line2D(self.l_outer_bound))
+        self.canvas_ax.add_line(self.to_Line2D(self.r_outer_bound))
+        self.canvas_ax.add_line(self.to_Line2D(self.l_inner_bound))
+        self.canvas_ax.add_line(self.to_Line2D(self.r_inner_bound))
+
+        # Focus lines
+        self.focus_line_leye = plt.Line2D([], [], linewidth=2, color='r')
+        self.focus_line_reye = plt.Line2D([], [], linewidth=2, color='r')
+        self.canvas_ax.add_line(self.focus_line_leye)
+        self.canvas_ax.add_line(self.focus_line_reye)
 
         self.reachable_scatter = plt.scatter([], [])
-        print '_init_graphics: %s' % (time.time() - stime)
 
     def redraw(self):
+        # Draw attended points
         self.reachable_scatter.set_offsets(self.attended_points)
+
+        # Adjust focus lines
+        self.focus_line_leye.set_data([self.l_focus_line.coords[0][0], self.l_focus_line.coords[1][0]], [self.l_focus_line.coords[0][1], self.l_focus_line.coords[1][1]])
+        self.focus_line_reye.set_data([self.r_focus_line.coords[0][0], self.r_focus_line.coords[1][0]], [self.r_focus_line.coords[0][1], self.r_focus_line.coords[1][1]])
 
         plt.plot()
         plt.pause(0.000001)
 
-    def random_angle(self, min, max):
-        return random.uniform(min, max)
-
     def calc_angle_submissive_eye(self, angle):
         focus_line = self.rotate_line(self.l_center_line, angle)
-        stime = time.time()
-        intersection_point = intersection(focus_line, self.visual_space)[0]
 
-        line = Line(Point(self.r_center_line.p1.x, 0), intersection_point)
-
-        angle_between = Line.angle_between(line, self.r_center_line)
-        print 'calc_angle_submissive_eye: %s' % (time.time() - stime)
+        angle_between = self.get_angle_between(
+            LineString([(self.r_center_line.coords[0][0], 0), self.get_pos_intersection(focus_line, self.visual_space.boundary).coords[0]]),
+            self.r_center_line
+        )
         return angle_between
 
     def calculate_lines(self):
-        stime = time.time()
-        self.l_center_line = Line(Point(self.center_origin -self.inter_eye_distance / 2, 0),
-                                  Point(self.center_origin - self.inter_eye_distance / 2, math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2)**2)))
-        self.r_center_line = Line(Point(self.center_origin + self.inter_eye_distance / 2, 0),
+        # Center lines for left and right eye
+        self.l_center_line = LineString([Point(self.center_origin -self.inter_eye_distance / 2, 0),
+                                  Point(self.center_origin - self.inter_eye_distance / 2, math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2)**2))])
+        self.r_center_line = LineString([Point(self.center_origin + self.inter_eye_distance / 2, 0),
                                   Point(self.center_origin + self.inter_eye_distance / 2,
-                                        math.sqrt(self.max_distance ** 2 - (self.inter_eye_distance / 2) ** 2)))
+                                        math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2) ** 2))])
 
+        # Inner and outer bounds for left and right eye
         self.l_outer_bound = self.rotate_line(self.l_center_line, + self.max_angle)
         self.r_outer_bound = self.rotate_line(self.r_center_line, - self.max_angle)
         self.l_inner_bound = self.rotate_line(self.l_center_line, - self.max_angle)
         self.r_inner_bound = self.rotate_line(self.r_center_line, + self.max_angle)
 
-        self.min_angle = Line.angle_between(
-            Line(self.l_center_line.p1, self.get_pos_intersection(self.r_inner_bound, self.visual_space)),
-            self.l_center_line)
-        print 'calculate_lines: %s' % (time.time() - stime)
+        self.min_angle = self.get_angle_between(
+            LineString([self.l_center_line.coords[0], self.get_pos_intersection(self.r_inner_bound, self.visual_space.boundary).coords[0]]),
+            self.l_center_line
+        )
 
-    def convert_to_Line2D(self, line):
-        return plt.Line2D((line.p1.x, line.p2.x),
-                   (line.p1.y, line.p2.y))
+    def to_Line2D(self, line):
+        ''' Converts a Shapely line to a matplotlib Line2D '''
+        return plt.Line2D((line.coords[0][0], line.coords[1][0]), (line.coords[0][1], line.coords[1][1]))
 
     def rotate_line(self, line, angle):
-        stime = time.time()
-        line_x = line.p1.x
-
-        rotated_x = math.cos(angle) * 0 - math.sin(angle) * line.p2.y
-        rotated_y = math.sin(angle) * 0 + math.cos(angle) * line.p2.y
-
-        temp_line = Line(Point(line_x, line.p1.y), Point(rotated_x + line_x, rotated_y))
-
-        intersection_point = self.get_pos_intersection(temp_line, self.visual_space)
-
-        new_line = Line(temp_line.p1, intersection_point)
-        print 'rotate_line: %s' % (time.time() - stime)
-        return new_line
+        ''' Wrapper function for rotating the line to an angle and then clipping the rotated line to the visual space. '''
+        new_line = affinity.rotate(line, angle, origin=line.coords[0])
+        intersection_point = self.get_pos_intersection(new_line, self.visual_space.boundary)        
+        return LineString([Point(line.coords[0][0], line.coords[0][1]), intersection_point])
 
     def get_pos_intersection(self, e1, e2):
-        intersection_point = None
-        for point in intersection(e1, e2):
-            if point.y >= 0:
-                intersection_point = point
+        ''' Calculates the intersection between two entities. '''
+        # Hack: extend the line to make sure there is an intersection point
+        extended_point = Point(e1.coords[1][0] + (e1.coords[1][0] - e1.coords[0][0]) / e1.length * e1.length**2,
+                               e1.coords[1][1] + (e1.coords[1][1] - e1.coords[0][1]) / e1.length * e1.length**2)
+        e1 = LineString([Point(e1.coords[0][0], e1.coords[0][1]), extended_point])
+        intersection_point = e1.intersection(e2)
 
         return intersection_point
 
+    def get_angle_between(self, line1, line2):
+        ''' Uses SymPy to calculate the angle between two lines. Assumes input formatted as Shapely lines. '''
+        return SymLine.angle_between(
+            SymLine(SymPoint(*line1.coords[0]), SymPoint(*line1.coords[1])),
+            SymLine(SymPoint(*line2.coords[0]), SymPoint(*line2.coords[1]))
+        )
+
     def random_eye_pos(self):
-        stime = time.time()
-        # do stuff
-        rand_angle_leye = self.random_angle(-self.max_angle, self.min_angle)
-        angle_reye = self.random_angle(self.calc_angle_submissive_eye(rand_angle_leye), self.max_angle)
-        l_focus_line = self.rotate_line(self.l_center_line, rand_angle_leye)
-        r_focus_line = self.rotate_line(self.r_center_line, angle_reye)
-        focus_point = self.get_pos_intersection(l_focus_line, r_focus_line)
-        self.attended_points.append((focus_point.x, focus_point.y))
-        print 'random_eye_pos: %s' % (time.time() - stime)
+        angle_leye = random.uniform(-self.max_angle, self.min_angle)
+        angle_reye = random.uniform(self.calc_angle_submissive_eye(angle_leye), self.max_angle)
+        self.l_focus_line = self.rotate_line(self.l_center_line, angle_leye)
+        self.r_focus_line = self.rotate_line(self.r_center_line, angle_reye)
+        focus_point = self.get_pos_intersection(self.l_focus_line, self.r_focus_line)
+        if focus_point:
+            # Hacky ... sometimes there is no intersection point? 
+            self.attended_points.append((focus_point.x, focus_point.y))
 
 def save_data(arm):
     with open('output.dat', 'wb') as f_out:
