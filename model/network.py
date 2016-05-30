@@ -1,25 +1,27 @@
 from lasagne.layers import InputLayer, DenseLayer
+from lasagne import layers
 from lasagne.nonlinearities import sigmoid
+from RBFLayer import RBFLayer
 import theano.tensor as T
 import lasagne
 import theano
-
+import numpy as np
 import pickle
 import random
 from IPython import embed
+from arm import Arm
 
-def init_network(input_var):
-    l_in  = InputLayer((None,9), input_var=input_var)
-    l_h   = DenseLayer(l_in, num_units=7, nonlinearity=sigmoid)
-    l_out = DenseLayer(l_h, num_units=6, nonlinearity=sigmoid)
+def create_network(prototypes):
+    l_in  = InputLayer((None,2))
+    l_rbf = RBFLayer(l_in, prototypes)
+    l_out = DenseLayer(l_rbf, layers.get_output_shape(l_rbf), nonlinearity=sigmoid)
 
     return l_out
 
-def train_network():
-    print 'Getting network..'
+def train_network(network):
+    
     input_var = T.irow('inpt')
     target_var = T.vector('target')
-    network = init_network(input_var)
     pred = lasagne.layers.get_output(network)
     loss = lasagne.objectives.squared_error(pred, target_var)
     loss = loss.mean()
@@ -38,5 +40,20 @@ def main():
     y_train, X_train = zip(*lst[:int(len(lst) * 0.75)])
     y_test, X_test   = zip(*lst[int(len(lst) * 0.75 + 1):])
 
+def test(prototypes):
+    l_in = InputLayer(shape = (None, 2))
+    print layers.get_output_shape(l_in)
+      
+    #RBF layer
+    l_rbf = RBFLayer(l_in, prototypes)
+    print layers.get_output_shape(l_rbf)
+    
+    print layers.get_output(l_rbf, inputs = np.array([[0,0]]))
+    
+    
+
+
 if __name__ == '__main__':
-    main()
+    arm = Arm(visualize=False)
+    prototypes = arm.create_prototypes()
+    test(prototypes)

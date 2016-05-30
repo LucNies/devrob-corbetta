@@ -8,6 +8,8 @@ from sympy.geometry import Line as SymLine
 from sympy.geometry import Point as SymPoint
 from shapely.geometry import Point, LineString
 from shapely import affinity
+from fractions import gcd
+import time
 
 from IPython import embed
 
@@ -15,6 +17,8 @@ class Arm(object):
     def __init__(self, origin=0, visualize=True):
         self.L = 5
         self.origin = origin
+        self.max_elbow_angle = 160
+        self.max_shoulder_angle = 100
         self.shoulder_joint = (self.origin, 0)
         self.elbow_joint = (self.origin, self.L)
         self.wrist_joint = (self.origin, self.L*2)
@@ -51,20 +55,57 @@ class Arm(object):
         self.reachable_scatter = plt.scatter([], [])
 
     def random_arm_pos(self):
-        shoulder_angle  = random.randint(0, 360) * (math.pi / 180)
+        shoulder_angle  = random.randint(0, self.max_shoulder_angle) * (math.pi / 180)
+        print shoulder_angle
         changed = False
         if self.shoulder_joint[1] + self.L * math.sin(shoulder_angle) > 0:
             self.elbow_joint = (self.shoulder_joint[0] + self.L * math.cos(shoulder_angle),
                                 self.shoulder_joint[1] + self.L * math.sin(shoulder_angle))
 
             while changed == False:
-                elbow_angle = shoulder_angle + random.randint(0, 160) * (math.pi / 180) #160 degrees is in my opinion the most the arm can bend and can only bend one way
+                elbow_angle = shoulder_angle + random.randint(0, self.max_elbow_angle) * (math.pi / 180) #160 degrees is in my opinion the most the arm can bend and can only bend one way
                 if self.elbow_joint[1] + self.L * math.sin(elbow_angle) > 0:
                     self.wrist_joint = (self.elbow_joint[0] + self.L * math.cos(elbow_angle),
                                         self.elbow_joint[1] + self.L * math.sin(elbow_angle))
                     datapoint = (self.wrist_joint, (shoulder_angle, elbow_angle))
                     self.reached_points.append(datapoint)
                     changed = True
+
+
+    """
+    Assumes the anlges are allowed
+    """    
+    def move_arm(self, shoulder_angle, elbow_angle, redraw = True):
+        shoulder_angle *= (math.pi / 180)
+        elbow_angle = shoulder_angle + elbow_angle*(math.pi / 180)
+        self.elbow_joint = (self.shoulder_joint[0] + self.L * math.cos(shoulder_angle),
+                            self.shoulder_joint[1] + self.L * math.sin(shoulder_angle))
+        self.wrist_joint = (self.elbow_joint[0] + self.L * math.cos(elbow_angle),
+                            self.elbow_joint[1] + self.L * math.sin(elbow_angle))
+
+#        self.elbow_joint = (self.L * math.cos(shoulder_angle), self.L * math.sin(shoulder_angle))
+ #       self.wrist_joint = (self.L * math.cos(elbow_angle), self.L * math.sin(elbow_angle))
+        datapoint = (self.wrist_joint, (shoulder_angle, elbow_angle))
+        self.reached_points.append(datapoint)
+        if redraw:
+            self.redraw()
+                
+    def create_prototypes(self, shape = (10,10)):
+        commands = np.zeros(shape = (shape[0]*shape[1], 2)) 
+        
+        gcd_shoulder = gcd(shape[0],self.max_shoulder_angle)
+        gcd_elbow = gcd(shape[1], self.max_elbow_angle)
+
+        i = 0
+        for shoulder_angle in np.arange(0, self.max_shoulder_angle, self.max_shoulder_angle/gcd_shoulder+1):
+            for elbow_angle in np.arange(0, self.max_elbow_angle , self.max_elbow_angle/gcd_elbow+1):
+                commands[i] = [shoulder_angle, elbow_angle]
+                self.move_arm(shoulder_angle, elbow_angle)
+                i+=1
+                #print shoulder_angle, elbow_angle
+        
+        print commands.shape
+        return commands
 
     def redraw(self):
         if self.visualize:
@@ -211,22 +252,25 @@ def save_data(arm):
         pickle.dump(arm.reached_points, f_out)
 
 def main():
-    ''''
+    
     arm = Arm(origin=12, visualize=True)
-    while len(arm.reached_points) < 1000000:
-        arm.random_arm_pos()
-        arm.redraw()
+    arm.create_prototypes()
+    #wait = raw_input("Press enter when done...")
+    #while len(arm.reached_points) < 1000000:
+        
+        #arm.random_arm_pos()
+        #arm.redraw()
 
-        if len(arm.reached_points) % 100000 == 0:
-            print len(arm.reached_points)
+        #if len(arm.reached_points) % 100000 == 0:
+         #   print len(arm.reached_points)
 
-    save_data(arm)
+   # save_data(arm)
+    
     '''
-
     eyes = Eyes(origin=0)
     while True:
         eyes.random_eye_pos()
         eyes.redraw()
-
+        ''' 
 if __name__ == '__main__':
     main()
