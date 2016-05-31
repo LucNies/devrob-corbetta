@@ -132,14 +132,14 @@ class Arm(object):
             plt.pause(0.00001)
 
 class Eyes(object):
-    def __init__(self, origin, left_dominant = True):
+    def __init__(self, origin):
         self.center_origin = origin
         self.inter_eye_distance = 6
         self.attended_points = []
         self.max_distance = 15
         self.visual_space = Point(self.center_origin, 0).buffer(self.max_distance)
         self.max_angle = 60
-        self.left_dominant = left_dominant
+        self.left_dominant = True
 
         self.calculate_lines()
         self._init_graphics()
@@ -157,21 +157,19 @@ class Eyes(object):
         self.canvas_ax.add_patch(self.right_eye_circle)
         self.canvas_ax.add_patch(self.visual_space_circle)
 
-        self.canvas_ax.add_line(self.to_Line2D(self.l_center_line))
-        self.canvas_ax.add_line(self.to_Line2D(self.r_center_line))
-        self.canvas_ax.add_line(self.to_Line2D(self.l_outer_bound))
-        self.canvas_ax.add_line(self.to_Line2D(self.r_outer_bound))
-        self.canvas_ax.add_line(self.to_Line2D(self.l_inner_bound))
-        self.canvas_ax.add_line(self.to_Line2D(self.r_inner_bound))
+        self.canvas_ax.add_line(self.to_Line2D(self.dom_center_line))
+        self.canvas_ax.add_line(self.to_Line2D(self.sub_center_line))
+        #self.canvas_ax.add_line(self.to_Line2D(self.dom_outer_bound))
+        #self.canvas_ax.add_line(self.to_Line2D(self.sub_outer_bound))
+        self.canvas_ax.add_line(self.to_Line2D(self.dom_inner_bound))
+        self.canvas_ax.add_line(self.to_Line2D(self.sub_inner_bound))
         #self.canvas_ax.add_line(self.to_Line2D(self.min_angle_line))
 
         # Focus lines
-        self.focus_line_leye = plt.Line2D([], [], linewidth=2, color='r')
-        self.focus_line_reye = plt.Line2D([], [], linewidth=2, color='r')
-        self.right_eye_line = plt.Line2D([], [], linewidth=2, color='g')
-        self.canvas_ax.add_line(self.focus_line_leye)
-        self.canvas_ax.add_line(self.focus_line_reye)
-        self.canvas_ax.add_line(self.right_eye_line)
+        self.focus_line_dom_eye = plt.Line2D([], [], linewidth=2, color='r')
+        self.focus_line_sub_eye = plt.Line2D([], [], linewidth=2, color='g')
+        self.canvas_ax.add_line(self.focus_line_dom_eye)
+        self.canvas_ax.add_line(self.focus_line_sub_eye)
 
         self.reachable_scatter = plt.scatter([], [])
 
@@ -180,59 +178,63 @@ class Eyes(object):
         self.reachable_scatter.set_offsets(self.attended_points)
 
         # Adjust focus lines
-        self.focus_line_leye.set_data([self.l_focus_line.coords[0][0], self.l_focus_line.coords[1][0]], [self.l_focus_line.coords[0][1], self.l_focus_line.coords[1][1]])
-        self.focus_line_reye.set_data([self.r_focus_line.coords[0][0], self.r_focus_line.coords[1][0]], [self.r_focus_line.coords[0][1], self.r_focus_line.coords[1][1]])
+        self.focus_line_dom_eye.set_data([self.dom_focus_line.coords[0][0], self.dom_focus_line.coords[1][0]], [self.dom_focus_line.coords[0][1], self.dom_focus_line.coords[1][1]])
+        self.focus_line_sub_eye.set_data([self.sub_focus_line.coords[0][0], self.sub_focus_line.coords[1][0]], [self.sub_focus_line.coords[0][1], self.sub_focus_line.coords[1][1]])
 
         plt.plot()
         plt.pause(0.000000000001)
 
     def calc_angle_submissive_eye(self, angle):
+        dom_focus_line = self.rotate_line(self.dom_center_line, angle)
+        intersection_point = self.get_pos_intersection(dom_focus_line, self.visual_space.boundary)
+        self.sub_angle_line = LineString([(self.sub_center_line.coords[0][0], 0), intersection_point.coords[0]])
+        #embed()
+        angle_between = self.get_angle_between(
+            self.sub_angle_line,
+            self.sub_center_line
+        )
+        angle = math.degrees(angle_between)
         if self.left_dominant:
-            left_focus_line = self.rotate_line(self.l_center_line, angle)
-            intersection_point = self.get_pos_intersection(left_focus_line, self.visual_space.boundary)
-            self.right_angle_line = LineString([(self.r_center_line.coords[0][0], 0), intersection_point.coords[0]])
-            #embed()
-            angle_between = self.get_angle_between(
-                self.right_angle_line,
-                self.r_center_line
-            )
-            angle = math.degrees(angle_between)
-            if math.atan2(self.right_angle_line.coords[1][1], self.right_angle_line.coords[1][0] - self.inter_eye_distance/2) - math.pi/2 < 0:
+            if math.atan2(self.sub_angle_line.coords[1][1], self.sub_angle_line.coords[1][0] - self.inter_eye_distance/2) - math.pi/2 < 0:
                 angle = -angle
 
         else:
-            right_focus_line = self.rotate_line(self.r_center_line, angle)
-            intersection_point = self.get_pos_intersection(right_focus_line, self.visual_space.boundary)
-            self.left_angle_line = LineString([(self.l_center_line.coords[0][0], 0), intersection_point.coords[0]])
-            #embed()
-            angle_between = self.get_angle_between(
-                self.left_angle_line,
-                self.l_center_line
-            )
-            angle = math.degrees(angle_between)
-            if math.atan2(self.left_angle_line.coords[1][1], self.left_angle_line.coords[1][0] + self.inter_eye_distance/2) - math.pi/2 < 0:
+            if math.atan2(self.sub_angle_line.coords[1][1], self.sub_angle_line.coords[1][0] + self.inter_eye_distance/2) - math.pi/2 < 0:
                 angle = -angle
 
         return angle
 
     def calculate_lines(self):
         # Center lines for left and right eye
-        self.l_center_line = LineString([Point(self.center_origin -self.inter_eye_distance / 2, 0),
+        if self.left_dominant:
+            self.dom_center_line = LineString([Point(self.center_origin - self.inter_eye_distance / 2, 0),
                                   Point(self.center_origin - self.inter_eye_distance / 2, math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2)**2))])
-        self.r_center_line = LineString([Point(self.center_origin + self.inter_eye_distance / 2, 0),
-                                  Point(self.center_origin + self.inter_eye_distance / 2,
-                                        math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2) ** 2))])
+            self.sub_center_line = LineString([Point(self.center_origin + self.inter_eye_distance / 2, 0),
+                                Point(self.center_origin + self.inter_eye_distance / 2,
+                                math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2) ** 2))])
+
+            self.dom_outer_bound = self.rotate_line(self.dom_center_line, + self.max_angle)
+            self.sub_outer_bound = self.rotate_line(self.sub_center_line, - self.max_angle)
+            self.dom_inner_bound = self.rotate_line(self.dom_center_line, - self.max_angle)
+            self.sub_inner_bound = self.rotate_line(self.sub_center_line, + self.max_angle)
+        else:
+            self.dom_center_line = LineString([Point(self.center_origin + self.inter_eye_distance / 2, 0),
+                      Point(self.center_origin + self.inter_eye_distance / 2, math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2)**2))])
+            self.sub_center_line = LineString([Point(self.center_origin -self.inter_eye_distance / 2, 0),
+                      Point(self.center_origin - self.inter_eye_distance / 2, math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2)**2))])
+
+            self.dom_outer_bound = self.rotate_line(self.dom_center_line, - self.max_angle)
+            self.sub_outer_bound = self.rotate_line(self.sub_center_line, + self.max_angle)
+            self.dom_inner_bound = self.rotate_line(self.dom_center_line, + self.max_angle)
+            self.sub_inner_bound = self.rotate_line(self.sub_center_line, - self.max_angle)
 
         # Inner and outer bounds for left and right eye
-        self.l_outer_bound = self.rotate_line(self.l_center_line, + self.max_angle)
-        self.r_outer_bound = self.rotate_line(self.r_center_line, - self.max_angle)
-        self.l_inner_bound = self.rotate_line(self.l_center_line, - self.max_angle)
-        self.r_inner_bound = self.rotate_line(self.r_center_line, + self.max_angle)
 
-        self.min_angle_line = LineString([self.l_center_line.coords[0], self.get_pos_intersection(self.r_inner_bound, self.visual_space.boundary).coords[0]])
+
+        self.min_angle_line = LineString([self.dom_center_line.coords[0], self.get_pos_intersection(self.sub_inner_bound, self.visual_space.boundary).coords[0]])
         self.min_angle = math.degrees(self.get_angle_between(
             self.min_angle_line,
-            self.l_center_line
+            self.dom_center_line
         ))
 
     def to_Line2D(self, line):
@@ -263,14 +265,17 @@ class Eyes(object):
         )
 
     def random_eye_pos(self):
-        angle_leye = random.uniform(-self.max_angle, self.min_angle)
-        angle_reye = random.uniform(self.calc_angle_submissive_eye(angle_leye), self.max_angle)
-        self.l_focus_line = self.rotate_line(self.l_center_line, angle_leye)
-        self.r_focus_line = self.rotate_line(self.r_center_line, angle_reye)
-        focus_point = self.get_pos_intersection(self.l_focus_line, self.r_focus_line)
-        if focus_point:
-            # Hacky ... sometimes there is no intersection point? 
-            self.attended_points.append((focus_point.x, focus_point.y))
+        self.left_dominant = random.randint(0, 1)
+        if self.left_dominant:
+            angle_dom_eye = random.uniform(-self.max_angle, self.min_angle)
+            angle_sub_eye = random.uniform(self.calc_angle_submissive_eye(angle_dom_eye), self.max_angle)
+        else:
+            angle_dom_eye = random.uniform(-self.min_angle, self.max_angle)
+            angle_sub_eye = random.uniform(-self.max_angle, self.calc_angle_submissive_eye(angle_dom_eye))
+        self.dom_focus_line = self.rotate_line(self.dom_center_line, angle_dom_eye)
+        self.sub_focus_line = self.rotate_line(self.sub_center_line, angle_sub_eye)
+        focus_point = self.get_pos_intersection(self.dom_focus_line, self.sub_focus_line)
+        self.attended_points.append((focus_point.x, focus_point.y))
 
 def save_data(arm):
     with open('output.dat', 'wb') as f_out:
