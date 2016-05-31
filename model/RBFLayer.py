@@ -6,7 +6,9 @@ Created on Sun May 29 14:17:28 2016
 """
 
 import theano.tensor as T
+import theano
 import lasagne
+from IPython import embed
 
 class RBFLayer(lasagne.layers.Layer):
     
@@ -20,7 +22,14 @@ class RBFLayer(lasagne.layers.Layer):
         
     
     def get_output_for(self, input, **kwargs):
-        return T.exp(-self.beta*T.sqr(input-self.prototypes))
+
+        result, updates = theano.scan(fn=lambda row, prototypes: prototypes - row,
+                                      sequences=[input],
+                                      non_sequences=self.prototypes)
+        a = T.sum(T.sqr(result), axis=2) #+ shape1*1
+        b = -self.beta*a
+        c = T.exp(b)
+        return c#T.exp(-self.beta*T.sum(T.sqr(result), axis=1))
     
     
     def get_output_shape_for(self, input_shape):
