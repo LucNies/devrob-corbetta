@@ -1,4 +1,4 @@
-from lasagne.layers import InputLayer, DenseLayer
+from lasagne.layers import InputLayer, DenseLayer, batch_norm
 from lasagne import layers
 from lasagne.nonlinearities import sigmoid
 from RBFLayer import RBFLayer
@@ -10,27 +10,51 @@ import pickle
 import random
 from IPython import embed
 from arm import Arm
+from tqdm import tqdm
 
-def create_network(prototypes):
-    l_in  = InputLayer((None,2))
+batch_size = 10000
+
+def create_network(prototypes, n_output = 2):
+    #print "prototpyes"+ str(prototypes.shape)
+    l_in  = InputLayer((None, 2))
+    
+    #l_dense = DenseLayer(l_in, num_units = 100)
     l_rbf = RBFLayer(l_in, prototypes)
-    l_out = DenseLayer(l_rbf, layers.get_output_shape(l_rbf), nonlinearity=sigmoid)
+    
+    l_out = DenseLayer(l_rbf, num_units = n_output) #might need leaky rectify, espacially during test time 
 
     return l_out
 
 def train_network(network):
     
-    input_var = T.irow('inpt')
-    target_var = T.vector('target')
-    pred = lasagne.layers.get_output(network)
+    input_var = T.fmatrix()
+    target_var = T.fmatrix()
+    pred = lasagne.layers.get_output(network, inputs = input_var)
     loss = lasagne.objectives.squared_error(pred, target_var)
     loss = loss.mean()
     params = lasagne.layers.get_all_params(network, trainable=True)
-    updates = lasagne.updates.nesterov_momentum(
-        loss, params, learning_rate=0.1, momentum=0.9
-    )
-    train_fn = theano.function([input_var, target_var], loss, updates=updates)
-    embed()
+    updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.1, momentum=0.9)
+    train_fn = theano.function([input_var, target_var], loss, updates=updates)#LEAKY!
+
+    
+    data = load_data()
+    #embed()
+    print "Train network"
+    
+    for i in tqdm(range(len(data[0])/batch_size)):
+        input_batch = data[1][i*batch_size:(i+1)*batch_size].reshape((batch_size,2))
+        output_batch = data[0][i*batch_size:(i+1)*batch_size].reshape((batch_size,2))
+        loss = train_fn(input_batch, output_batch ) #TODO: make the 2 dynamic 
+        print "loss: {}".format(loss)
+        
+
+
+def load_data():
+    print "Load data" 
+    with open('output.dat', 'rb') as f_out:
+        data = np.array(pickle.load(f_out), dtype = "float32")
+    return np.split(data, 2, axis = 1)
+
 
 def main():
     with open('output.dat', 'rb') as f_in:
@@ -41,19 +65,16 @@ def main():
     y_test, X_test   = zip(*lst[int(len(lst) * 0.75 + 1):])
 
 def test(prototypes):
-    l_in = InputLayer(shape = (None, 2))
-    print layers.get_output_shape(l_in)
-      
-    #RBF layer
-    l_rbf = RBFLayer(l_in, prototypes)
-    print layers.get_output_shape(l_rbf)
-    
-    print layers.get_output(l_rbf, inputs = np.array([[0,0]]))
-    
+    pass
     
 
 
 if __name__ == '__main__':
+    arm = Arm(visualize = False)
+    network = create_network(arm.create_prototypes(redraw = False))
+    train_network(network)
+    """
     arm = Arm(visualize=False)
     prototypes = arm.create_prototypes()
     test(prototypes)
+    """

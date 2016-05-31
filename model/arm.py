@@ -10,6 +10,7 @@ from shapely.geometry import Point, LineString
 from shapely import affinity
 from fractions import gcd
 import time
+from tqdm import tqdm
 
 from IPython import embed
 
@@ -56,7 +57,6 @@ class Arm(object):
 
     def random_arm_pos(self):
         shoulder_angle  = random.randint(0, self.max_shoulder_angle) * (math.pi / 180)
-        print shoulder_angle
         changed = False
         if self.shoulder_joint[1] + self.L * math.sin(shoulder_angle) > 0:
             self.elbow_joint = (self.shoulder_joint[0] + self.L * math.cos(shoulder_angle),
@@ -70,10 +70,10 @@ class Arm(object):
                     datapoint = (self.wrist_joint, (shoulder_angle, elbow_angle))
                     self.reached_points.append(datapoint)
                     changed = True
-
+        
 
     """
-    Assumes the anlges are allowed
+    Assumes the given anlges are allowed
     """    
     def move_arm(self, shoulder_angle, elbow_angle, redraw = True):
         shoulder_angle *= (math.pi / 180)
@@ -90,7 +90,7 @@ class Arm(object):
         if redraw:
             self.redraw()
                 
-    def create_prototypes(self, shape = (10,10)):
+    def create_prototypes(self, shape = (10,10), redraw = False):
         commands = np.zeros(shape = (shape[0]*shape[1], 2)) 
         
         gcd_shoulder = gcd(shape[0],self.max_shoulder_angle)
@@ -100,11 +100,10 @@ class Arm(object):
         for shoulder_angle in np.arange(0, self.max_shoulder_angle, self.max_shoulder_angle/gcd_shoulder+1):
             for elbow_angle in np.arange(0, self.max_elbow_angle , self.max_elbow_angle/gcd_elbow+1):
                 commands[i] = [shoulder_angle, elbow_angle]
-                self.move_arm(shoulder_angle, elbow_angle)
+                self.move_arm(shoulder_angle, elbow_angle, redraw = redraw)
                 i+=1
                 #print shoulder_angle, elbow_angle
         
-        print commands.shape
         return commands
 
     def redraw(self):
@@ -280,22 +279,27 @@ class Eyes(object):
 def save_data(arm):
     with open('output.dat', 'wb') as f_out:
         pickle.dump(arm.reached_points, f_out)
+    
+    print "Saved" 
 
 def main():
     
-    #arm = Arm(origin=12, visualize=True)
+
+    arm = Arm(origin=12, visualize=False)
     #arm.create_prototypes()
     #wait = raw_input("Press enter when done...")
-    #while len(arm.reached_points) < 1000000:
+    for i in tqdm(range(1000000)):
         
-        #arm.random_arm_pos()
-        #arm.redraw()
+        arm.random_arm_pos()
+        arm.redraw()
 
-        #if len(arm.reached_points) % 100000 == 0:
-         #   print len(arm.reached_points)
-
+    save_data(arm)
+    
+    '''
+=======
    # save_data(arm)
 
+>>>>>>> e2baa33a38e9bf7016cbc2de96f5876b6a1a6e59
     eyes = Eyes(origin=0)
     while True:
         eyes.random_eye_pos()
