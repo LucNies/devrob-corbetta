@@ -6,11 +6,10 @@ import pickle
 import time
 from sympy.geometry import Line as SymLine
 from sympy.geometry import Point as SymPoint
-from shapely.geometry import Point, LineString
+from shapely.geometry import Point, LineString, GeometryCollection
 from shapely import affinity
 from fractions import gcd
 import time
-from tqdm import tqdm
 
 from IPython import embed
 
@@ -165,8 +164,8 @@ class Eyes(object):
         #self.canvas_ax.add_line(self.to_Line2D(self.min_angle_line))
 
         # Focus lines
-        self.focus_line_dom_eye = plt.Line2D([], [], linewidth=2, color='r')
-        self.focus_line_sub_eye = plt.Line2D([], [], linewidth=2, color='g')
+        self.focus_line_dom_eye = plt.Line2D([], [], linewidth=2)
+        self.focus_line_sub_eye = plt.Line2D([], [], linewidth=2)
         self.canvas_ax.add_line(self.focus_line_dom_eye)
         self.canvas_ax.add_line(self.focus_line_sub_eye)
 
@@ -178,10 +177,12 @@ class Eyes(object):
 
         # Adjust focus lines
         self.focus_line_dom_eye.set_data([self.dom_focus_line.coords[0][0], self.dom_focus_line.coords[1][0]], [self.dom_focus_line.coords[0][1], self.dom_focus_line.coords[1][1]])
+        self.focus_line_dom_eye.set_color('r')
         self.focus_line_sub_eye.set_data([self.sub_focus_line.coords[0][0], self.sub_focus_line.coords[1][0]], [self.sub_focus_line.coords[0][1], self.sub_focus_line.coords[1][1]])
+        self.focus_line_sub_eye.set_color('g')
 
         plt.plot()
-        plt.pause(0.000000000001)
+        plt.pause(0.000001)
 
     def calc_angle_submissive_eye(self, angle):
         dom_focus_line = self.rotate_line(self.dom_center_line, angle)
@@ -226,8 +227,6 @@ class Eyes(object):
             self.sub_outer_bound = self.rotate_line(self.sub_center_line, + self.max_angle)
             self.dom_inner_bound = self.rotate_line(self.dom_center_line, + self.max_angle)
             self.sub_inner_bound = self.rotate_line(self.sub_center_line, - self.max_angle)
-
-        # Inner and outer bounds for left and right eye
 
 
         self.min_angle_line = LineString([self.dom_center_line.coords[0], self.get_pos_intersection(self.sub_inner_bound, self.visual_space.boundary).coords[0]])
@@ -274,7 +273,8 @@ class Eyes(object):
         self.dom_focus_line = self.rotate_line(self.dom_center_line, angle_dom_eye)
         self.sub_focus_line = self.rotate_line(self.sub_center_line, angle_sub_eye)
         focus_point = self.get_pos_intersection(self.dom_focus_line, self.sub_focus_line)
-        self.attended_points.append((focus_point.x, focus_point.y))
+        if type(focus_point) != GeometryCollection:
+            self.attended_points.append((focus_point.x, focus_point.y))
 
 def save_data(arm):
     with open('output.dat', 'wb') as f_out:
@@ -283,8 +283,7 @@ def save_data(arm):
     print "Saved" 
 
 def main():
-    
-
+    '''
     arm = Arm(origin=12, visualize=False)
     #arm.create_prototypes()
     #wait = raw_input("Press enter when done...")
@@ -294,15 +293,11 @@ def main():
         arm.redraw()
 
     save_data(arm)
-    
     '''
-=======
-   # save_data(arm)
-
->>>>>>> e2baa33a38e9bf7016cbc2de96f5876b6a1a6e59
     eyes = Eyes(origin=0)
     while True:
         eyes.random_eye_pos()
         eyes.redraw()
+
 if __name__ == '__main__':
     main()
