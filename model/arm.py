@@ -155,12 +155,16 @@ class Eyes(object):
         self.canvas_ax.add_patch(self.right_eye_circle)
         self.canvas_ax.add_patch(self.visual_space_circle)
 
-        self.canvas_ax.add_line(self.to_Line2D(self.dom_center_line))
-        self.canvas_ax.add_line(self.to_Line2D(self.sub_center_line))
+        self.line_dom_center = plt.Line2D([], [], linewidth=2)
+        self.line_sub_center = plt.Line2D([], [], linewidth=2)
+        self.line_dom_inner_bound = plt.Line2D([], [], linewidth=2)
+        self.line_sub_inner_bound = plt.Line2D([], [], linewidth=2)
+        self.canvas_ax.add_line(self.line_dom_center)
+        self.canvas_ax.add_line(self.line_sub_center)
         #self.canvas_ax.add_line(self.to_Line2D(self.dom_outer_bound))
         #self.canvas_ax.add_line(self.to_Line2D(self.sub_outer_bound))
-        self.canvas_ax.add_line(self.to_Line2D(self.dom_inner_bound))
-        self.canvas_ax.add_line(self.to_Line2D(self.sub_inner_bound))
+        self.canvas_ax.add_line(self.line_dom_inner_bound)
+        self.canvas_ax.add_line(self.line_sub_inner_bound)
         #self.canvas_ax.add_line(self.to_Line2D(self.min_angle_line))
 
         # Focus lines
@@ -169,11 +173,17 @@ class Eyes(object):
         self.canvas_ax.add_line(self.focus_line_dom_eye)
         self.canvas_ax.add_line(self.focus_line_sub_eye)
 
+        # Attended points
         self.reachable_scatter = plt.scatter([], [])
 
     def redraw(self):
         # Draw attended points
         self.reachable_scatter.set_offsets(self.attended_points)
+
+        self.line_dom_center.set_data([self.dom_center_line.coords[0][0], self.dom_center_line.coords[1][0]], [self.dom_center_line.coords[0][1], self.dom_center_line.coords[1][1]])
+        self.line_sub_center.set_data([self.sub_center_line.coords[0][0], self.sub_center_line.coords[1][0]], [self.sub_center_line.coords[0][1], self.sub_center_line.coords[1][1]])
+        self.line_dom_inner_bound.set_data([self.dom_inner_bound.coords[0][0], self.dom_inner_bound.coords[1][0]], [self.dom_inner_bound.coords[0][1], self.dom_inner_bound.coords[1][1]])
+        self.line_sub_inner_bound.set_data([self.sub_inner_bound.coords[0][0], self.sub_inner_bound.coords[1][0]], [self.sub_inner_bound.coords[0][1], self.sub_inner_bound.coords[1][1]])
 
         # Adjust focus lines
         self.focus_line_dom_eye.set_data([self.dom_focus_line.coords[0][0], self.dom_focus_line.coords[1][0]], [self.dom_focus_line.coords[0][1], self.dom_focus_line.coords[1][1]])
@@ -188,7 +198,7 @@ class Eyes(object):
         dom_focus_line = self.rotate_line(self.dom_center_line, angle)
         intersection_point = self.get_pos_intersection(dom_focus_line, self.visual_space.boundary)
         self.sub_angle_line = LineString([(self.sub_center_line.coords[0][0], 0), intersection_point.coords[0]])
-        #embed()
+
         angle_between = self.get_angle_between(
             self.sub_angle_line,
             self.sub_center_line
@@ -197,7 +207,6 @@ class Eyes(object):
         if self.left_dominant:
             if math.atan2(self.sub_angle_line.coords[1][1], self.sub_angle_line.coords[1][0] - self.inter_eye_distance/2) - math.pi/2 < 0:
                 angle = -angle
-
         else:
             if math.atan2(self.sub_angle_line.coords[1][1], self.sub_angle_line.coords[1][0] + self.inter_eye_distance/2) - math.pi/2 < 0:
                 angle = -angle
@@ -205,29 +214,38 @@ class Eyes(object):
         return angle
 
     def calculate_lines(self):
-        # Center lines for left and right eye
-        if self.left_dominant:
-            self.dom_center_line = LineString([Point(self.center_origin - self.inter_eye_distance / 2, 0),
-                                  Point(self.center_origin - self.inter_eye_distance / 2, math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2)**2))])
-            self.sub_center_line = LineString([Point(self.center_origin + self.inter_eye_distance / 2, 0),
-                                Point(self.center_origin + self.inter_eye_distance / 2,
-                                math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2) ** 2))])
+        # In case of Left dominance
+        self.Ldom_center_line = LineString([Point(self.center_origin - self.inter_eye_distance / 2, 0),
+                              Point(self.center_origin - self.inter_eye_distance / 2, math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2)**2))])
+        self.Lsub_center_line = LineString([Point(self.center_origin + self.inter_eye_distance / 2, 0),
+                            Point(self.center_origin + self.inter_eye_distance / 2,
+                            math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2) ** 2))])
 
-            self.dom_outer_bound = self.rotate_line(self.dom_center_line, + self.max_angle)
-            self.sub_outer_bound = self.rotate_line(self.sub_center_line, - self.max_angle)
-            self.dom_inner_bound = self.rotate_line(self.dom_center_line, - self.max_angle)
-            self.sub_inner_bound = self.rotate_line(self.sub_center_line, + self.max_angle)
-        else:
-            self.dom_center_line = LineString([Point(self.center_origin + self.inter_eye_distance / 2, 0),
-                      Point(self.center_origin + self.inter_eye_distance / 2, math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2)**2))])
-            self.sub_center_line = LineString([Point(self.center_origin -self.inter_eye_distance / 2, 0),
-                      Point(self.center_origin - self.inter_eye_distance / 2, math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2)**2))])
+        #self.Ldom_outer_bound = self.rotate_line(self.dom_center_line, + self.max_angle)
+        #self.Lsub_outer_bound = self.rotate_line(self.sub_center_line, - self.max_angle)
+        self.Ldom_inner_bound = self.rotate_line(self.Ldom_center_line, - self.max_angle)
+        self.Lsub_inner_bound = self.rotate_line(self.Lsub_center_line, + self.max_angle)
 
-            self.dom_outer_bound = self.rotate_line(self.dom_center_line, - self.max_angle)
-            self.sub_outer_bound = self.rotate_line(self.sub_center_line, + self.max_angle)
-            self.dom_inner_bound = self.rotate_line(self.dom_center_line, + self.max_angle)
-            self.sub_inner_bound = self.rotate_line(self.sub_center_line, - self.max_angle)
+        # In case of Right dominance
+        self.Rdom_center_line = LineString([Point(self.center_origin + self.inter_eye_distance / 2, 0),
+                  Point(self.center_origin + self.inter_eye_distance / 2, math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2)**2))])
+        self.Rsub_center_line = LineString([Point(self.center_origin -self.inter_eye_distance / 2, 0),
+                  Point(self.center_origin - self.inter_eye_distance / 2, math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2)**2))])
 
+        #self.Rdom_outer_bound = self.rotate_line(self.dom_center_line, - self.max_angle)
+        #self.Rsub_outer_bound = self.rotate_line(self.sub_center_line, + self.max_angle)
+        self.Rdom_inner_bound = self.rotate_line(self.Rdom_center_line, + self.max_angle)
+        self.Rsub_inner_bound = self.rotate_line(self.Rsub_center_line, - self.max_angle)
+
+    def set_dominance(self, dominance):
+        self.left_dominant = bool(dominance)
+
+        self.dom_center_line = self.Ldom_center_line if self.left_dominant else self.Rdom_center_line
+        self.sub_center_line = self.Lsub_center_line if self.left_dominant else self.Rsub_center_line
+        self.dom_inner_bound = self.Ldom_inner_bound if self.left_dominant else self.Rdom_inner_bound
+        self.sub_inner_bound = self.Lsub_inner_bound if self.left_dominant else self.Rsub_inner_bound
+        #self.dom_outer_bound = self.Ldom_outer_bound if self.left_dominant else self.Rdom_outer_bound
+        #self.sub_outer_bound = self.Lsub_outer_bound if self.left_dominant else self.Rsub_outer_bound
 
         self.min_angle_line = LineString([self.dom_center_line.coords[0], self.get_pos_intersection(self.sub_inner_bound, self.visual_space.boundary).coords[0]])
         self.min_angle = math.degrees(self.get_angle_between(
@@ -263,7 +281,8 @@ class Eyes(object):
         )
 
     def random_eye_pos(self):
-        self.left_dominant = random.randint(0, 1)
+        self.set_dominance(random.randint(0, 1))
+
         if self.left_dominant:
             angle_dom_eye = random.uniform(-self.max_angle, self.min_angle)
             angle_sub_eye = random.uniform(self.calc_angle_submissive_eye(angle_dom_eye), self.max_angle)
@@ -275,6 +294,8 @@ class Eyes(object):
         focus_point = self.get_pos_intersection(self.dom_focus_line, self.sub_focus_line)
         if type(focus_point) != GeometryCollection:
             self.attended_points.append((focus_point.x, focus_point.y))
+        else:
+            print 'No focus point'
 
 def save_data(arm):
     with open('output.dat', 'wb') as f_out:
