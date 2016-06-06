@@ -37,6 +37,9 @@ def train_network(network):
     updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.1, momentum=0.9)
     train_fn = theano.function([input_var, target_var], loss, updates=updates)#LEAKY!
 
+    val_prediction = layers.get_output(network, inputs = input_var, deterministic = True)
+    #test_loss
+
     print "Train network"
     
     for input_batch, output_batch in tqdm(iterate_data()):
