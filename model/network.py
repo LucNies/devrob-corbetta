@@ -1,4 +1,4 @@
-from lasagne.layers import InputLayer, DenseLayer, batch_norm
+from lasagne.layers import InputLayer, DenseLayer
 from lasagne import layers
 from lasagne.nonlinearities import sigmoid
 from RBFLayer import RBFLayer
@@ -11,6 +11,7 @@ import random
 from IPython import embed
 from arm import Arm
 from tqdm import tqdm
+from util import iterate_data
 
 batch_size = 10000
 
@@ -18,7 +19,7 @@ def create_network(prototypes, n_output = 2):
     #print "prototpyes"+ str(prototypes.shape)
     l_in  = InputLayer((None, 2))
     
-    #l_dense = DenseLayer(l_in, num_units = 100)
+    
     l_rbf = RBFLayer(l_in, prototypes)
     
     l_out = DenseLayer(l_rbf, num_units = n_output) #might need leaky rectify, espacially during test time 
@@ -36,14 +37,9 @@ def train_network(network):
     updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.1, momentum=0.9)
     train_fn = theano.function([input_var, target_var], loss, updates=updates)#LEAKY!
 
-    
-    data = load_data()
-    #embed()
     print "Train network"
     
-    for i in tqdm(range(len(data[0])/batch_size)):
-        input_batch = data[1][i*batch_size:(i+1)*batch_size].reshape((batch_size,2))
-        output_batch = data[0][i*batch_size:(i+1)*batch_size].reshape((batch_size,2))
+    for input_batch, output_batch in tqdm(iterate_data()):
         loss = train_fn(input_batch, output_batch ) #TODO: make the 2 dynamic 
         print "loss: {}".format(loss)
         
