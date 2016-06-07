@@ -22,7 +22,7 @@ def iterate_data(data_file = 'train_data.p', batch_size = 1000):
     n_data_points = len(data_points)        
     n_batches = n_data_points/batch_size
     
-    print "Got {} datapoints, good for {} batches".format(n_data_points, n_batches)
+    #print "Got {} datapoints, good for {} batches".format(n_data_points, n_batches)
      
     
     current_batch = 0
@@ -37,10 +37,10 @@ def iterate_data(data_file = 'train_data.p', batch_size = 1000):
 def evaluate(x, y):
     
     diff = x-y
-    summed = diff.sum(axis = 1)
-    squared = np.square(summed)
-    return squared, squared.mean(), squared.std()
-    
+    squared = np.square(diff)
+    summed = squared.sum(axis = 1)
+    rooted = np.sqrt(summed)
+    return rooted, rooted.mean(), rooted.std()
     
         
 
