@@ -83,6 +83,10 @@ class Eyes(object):
             plt.plot()
             plt.pause(0.000001)
 
+
+    """
+    Returns maximum angle of submissive eye
+    """
     def calc_angle_submissive_eye(self, angle):
         tstart= time.time()
         dom_focus_line = self.rotate_line(self.dom_center_line, angle)
@@ -145,6 +149,10 @@ class Eyes(object):
             self.min_angle_line,
             self.dom_center_line
         ))
+        self.sub_min_angle = math.degrees(self.get_angle_between(
+            self.sub_inner_bound,
+            self.sub_center_line
+        ))
         #print 'set_dominance: %s' % (time.time()-tstart)
 
     def to_Line2D(self, line):
@@ -184,7 +192,8 @@ class Eyes(object):
         self.dom_focus_line = self.rotate_line(self.dom_center_line, angle_dom_eye)
         self.sub_focus_line = self.rotate_line(self.sub_center_line, angle_sub_eye)
         focus_point = self.get_pos_intersection(self.dom_focus_line, self.sub_focus_line)
-
+        #embed()
+        self.attended_points.append((focus_point.x, focus_point.y))
         #print 'move_eyes: %s'  % (time.time() - tstart)
 
         if type(focus_point) != GeometryCollection:
@@ -194,17 +203,29 @@ class Eyes(object):
 
     def create_prototypes(self, shape = (10,10)):
             prototypes = np.zeros(shape=(shape[0] * shape[1], 2))
+            self.set_dominance(0)
+            dom_stepsize = (self.max_angle-self.min_angle)/shape[0]
+            print dom_stepsize
+            print "dom angles: "
+            print np.arange(-self.min_angle, self.max_angle, dom_stepsize)
+            for dom_angle in  np.arange(-self.min_angle, self.max_angle, dom_stepsize):
+                sub_max_angle = self.calc_angle_submissive_eye(dom_angle)-0.01#dirty fix
+                sub_min_angle = self.sub_min_angle-0.01
+                #if (sub_max_angle-sub_min_angle) > 0:
+                sub_stepsize = -(sub_max_angle-sub_min_angle)/shape[1]
+                print 'subs step size{}'.format(sub_stepsize)
+                print 'sub angles'
+                print np.arange(-sub_min_angle, sub_max_angle, sub_stepsize)
+                #else:
+                   # sub_stepsize = sub_max_angle
 
-            gcd_shoulder = gcd(shape[0])
-            gcd_elbow = gcd(shape[1], self.max_elbow_angle)
+                for sub_angle in np.arange(-sub_min_angle, -sub_max_angle, sub_stepsize):
+                    print dom_angle, self.sub_min_angle, sub_max_angle
+                    self.move_eyes(dom_angle, -self.sub_min_angle-0.01)
+                    self.redraw()
+                    #embed()
+                    wait = raw_input("Press enter when done...")
 
-            i = 0
-            for shoulder_angle in np.arange(0, self.max_shoulder_angle, self.max_shoulder_angle / gcd_shoulder + 1):
-                for elbow_angle in np.arange(0, self.max_elbow_angle, self.max_elbow_angle / gcd_elbow + 1):
-                    x, y = self.move_arm(shoulder_angle, elbow_angle)
-                    prototypes[i] = [x, y]
-                    i += 1
-                    # print shoulder_angle, elbow_angle
 
             return prototypes
 
