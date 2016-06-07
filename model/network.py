@@ -38,7 +38,7 @@ def train_network(network):
     train_fn = theano.function([input_var, target_var], loss, updates=updates)#LEAKY!
 
     val_prediction = layers.get_output(network, inputs = input_var, deterministic = True)
-    val_loss = lasagne.objectives.squared_error(val_prediction, inputs = input_var)
+    val_loss = lasagne.objectives.squared_error(val_prediction, target_var)
     val_loss = val_loss.mean()
     val_fn = theano.function([input_var, target_var], [val_prediction, val_loss])
 
