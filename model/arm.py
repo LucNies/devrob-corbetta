@@ -140,7 +140,7 @@ class Arm(object):
         return data_points
         
     def create_prototypes(self, shape = (10,10), redraw = False):
-        commands = np.zeros(shape = (shape[0]*shape[1], 2)) 
+        prototypes = np.zeros(shape = (shape[0]*shape[1], 2)) 
         
         gcd_shoulder = gcd(shape[0],self.max_shoulder_angle)
         gcd_elbow = gcd(shape[1], self.max_elbow_angle)
@@ -148,8 +148,8 @@ class Arm(object):
         i = 0
         for shoulder_angle in np.arange(0, self.max_shoulder_angle, self.max_shoulder_angle/gcd_shoulder+1):
             for elbow_angle in np.arange(0, self.max_elbow_angle , self.max_elbow_angle/gcd_elbow+1):
-                commands[i] = [shoulder_angle, elbow_angle]
-                self.move_arm(shoulder_angle, elbow_angle, redraw = redraw)
+                x, y = self.move_arm(shoulder_angle, elbow_angle, redraw = redraw)
+                prototypes[i] = [x, y]
                 i+=1
                 #print shoulder_angle, elbow_angle
         
@@ -358,11 +358,11 @@ def save_data(arm):
 
 def main():
     
-    arm = Arm(origin=12, visualize=False)
-    arm.create_dataset()
+    arm = Arm(origin=12, visualize=True)
+    #arm.create_dataset()
 
-    #arm.create_prototypes(redraw= True)
-    #wait = raw_input("Press enter when done...")
+    arm.create_prototypes(redraw= True)
+    wait = raw_input("Press enter when done...")
     """ 
     for i in tqdm(range(1000000)):
         
