@@ -7,7 +7,6 @@ Created on Mon Jun  6 14:53:21 2016
 
 import pickle
 import numpy as np
-import arm
 from IPython import embed
 
 def iterate_data(data_file = 'train_data.p', batch_size = 1000):
@@ -35,15 +34,19 @@ def iterate_data(data_file = 'train_data.p', batch_size = 1000):
          
         
 
-def test():
-    i = 0
-    while i < 10:
-        i+=1
-        yield i
+def evaluate(x, y):
+    
+    diff = x-y
+    summed = diff.sum(axis = 1)
+    squared = np.square(summed)
+    return squared, squared.mean(), squared.std()
+    
+    
         
 
 
 if __name__ == "__main__":
     
     for inputs, targets in iterate_data():
-        print inputs.shape, targets.shape    
+        dist, mean, std = evaluate(inputs, inputs+0.5)
+        print mean, std
