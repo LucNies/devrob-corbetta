@@ -194,6 +194,7 @@ class Eyes(object):
         focus_point = self.get_pos_intersection(self.dom_focus_line, self.sub_focus_line)
         #embed()
         self.attended_points.append((focus_point.x, focus_point.y))
+        #self.attended_points.append((-focus_point.x, focus_point.y)) #easy fix to not have to switch the dominant eye for making prototypes
         #print 'move_eyes: %s'  % (time.time() - tstart)
 
         if type(focus_point) != GeometryCollection:
@@ -204,26 +205,31 @@ class Eyes(object):
     def create_prototypes(self, shape = (10,10)):
             prototypes = np.zeros(shape=(shape[0] * shape[1], 2))
             self.set_dominance(0)
-            dom_stepsize = (self.max_angle-self.min_angle)/shape[0]
+            dom_stepsize = (abs(self.max_angle)+abs(self.min_angle))/shape[0]
             print dom_stepsize
             print "dom angles: "
             print np.arange(-self.min_angle, self.max_angle, dom_stepsize)
-            for dom_angle in  np.arange(-self.min_angle, self.max_angle, dom_stepsize):
-                sub_max_angle = self.calc_angle_submissive_eye(dom_angle)-0.01#dirty fix
-                sub_min_angle = self.sub_min_angle-0.01
+            for dom_angle in  np.arange(-self.min_angle, self.max_angle+dom_stepsize, dom_stepsize): #other way to include end of list?
+                print "dom angles: "
+                print np.arange(-self.min_angle, self.min_angle, dom_stepsize)
+                #embed()
+                sub_max_angle = self.calc_angle_submissive_eye(dom_angle)#dirty fix
+                sub_min_angle = self.sub_min_angle
                 #if (sub_max_angle-sub_min_angle) > 0:
-                sub_stepsize = -(sub_max_angle-sub_min_angle)/shape[1]
+                sub_stepsize = (abs(sub_max_angle- -self.max_angle))/shape[1]
                 print 'subs step size{}'.format(sub_stepsize)
                 print 'sub angles'
                 print np.arange(-sub_min_angle, sub_max_angle, sub_stepsize)
                 #else:
                    # sub_stepsize = sub_max_angle
 
-                for sub_angle in np.arange(-sub_min_angle, -sub_max_angle, sub_stepsize):
-                    print dom_angle, self.sub_min_angle, sub_max_angle
-                    self.move_eyes(dom_angle, -self.sub_min_angle-0.01)
+                for sub_angle in np.arange(-self.max_angle,sub_max_angle, sub_stepsize):
+                #print dom_angle,sub_angle, self.sub_min_angle, sub_max_angle
+
+
+                    self.move_eyes(dom_angle, sub_angle-0.01)
                     self.redraw()
-                    #embed()
+
                     wait = raw_input("Press enter when done...")
 
 
