@@ -3,6 +3,7 @@ import math
 import numpy as np
 import random
 import pickle
+from sympy import N
 from sympy.geometry import Line as SymLine
 from sympy.geometry import Point as SymPoint
 from shapely.geometry import Point, LineString, GeometryCollection
@@ -39,6 +40,7 @@ class Eyes(object):
         self.left_eye_circle = plt.Circle((self.center_origin - self.inter_eye_distance / 2, 0), radius=0.5, fill=False)
         self.right_eye_circle = plt.Circle((self.center_origin + self.inter_eye_distance / 2, 0), radius=0.5, fill=False)
         self.visual_space_circle = plt.Circle((self.center_origin, 0), radius=self.max_distance, fill=False)
+
         self.canvas_ax.add_patch(self.left_eye_circle)
         self.canvas_ax.add_patch(self.right_eye_circle)
         self.canvas_ax.add_patch(self.visual_space_circle)
@@ -49,11 +51,8 @@ class Eyes(object):
         self.line_sub_inner_bound = plt.Line2D([], [], linewidth=2)
         self.canvas_ax.add_line(self.line_dom_center)
         self.canvas_ax.add_line(self.line_sub_center)
-        #self.canvas_ax.add_line(self.to_Line2D(self.dom_outer_bound))
-        #self.canvas_ax.add_line(self.to_Line2D(self.sub_outer_bound))
         self.canvas_ax.add_line(self.line_dom_inner_bound)
         self.canvas_ax.add_line(self.line_sub_inner_bound)
-        #self.canvas_ax.add_line(self.to_Line2D(self.min_angle_line))
 
         # Focus lines
         self.focus_line_dom_eye = plt.Line2D([], [], linewidth=2)
@@ -88,7 +87,6 @@ class Eyes(object):
     Returns maximum angle of submissive eye
     """
     def calc_angle_submissive_eye(self, angle):
-        tstart= time.time()
         dom_focus_line = self.rotate_line(self.dom_center_line, angle)
         intersection_point = self.get_pos_intersection(dom_focus_line, self.visual_space.boundary)
         self.sub_angle_line = LineString([(self.sub_center_line.coords[0][0], 0), intersection_point.coords[0]])
@@ -105,8 +103,6 @@ class Eyes(object):
             if math.atan2(self.sub_angle_line.coords[1][1], self.sub_angle_line.coords[1][0] + self.inter_eye_distance/2) - math.pi/2 < 0:
                 angle = -angle
 
-        #print 'calc_angle: %s' % (time.time() - tstart)
-
         return angle
 
     def calculate_lines(self):
@@ -117,8 +113,6 @@ class Eyes(object):
                             Point(self.center_origin + self.inter_eye_distance / 2,
                             math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2) ** 2))])
 
-        #self.Ldom_outer_bound = self.rotate_line(self.dom_center_line, + self.max_angle)
-        #self.Lsub_outer_bound = self.rotate_line(self.sub_center_line, - self.max_angle)
         self.Ldom_inner_bound = self.rotate_line(self.Ldom_center_line, - self.max_angle)
         self.Lsub_inner_bound = self.rotate_line(self.Lsub_center_line, + self.max_angle)
 
@@ -128,21 +122,16 @@ class Eyes(object):
         self.Rsub_center_line = LineString([Point(self.center_origin -self.inter_eye_distance / 2, 0),
                   Point(self.center_origin - self.inter_eye_distance / 2, math.sqrt(self.max_distance**2 - (self.inter_eye_distance / 2)**2))])
 
-        #self.Rdom_outer_bound = self.rotate_line(self.dom_center_line, - self.max_angle)
-        #self.Rsub_outer_bound = self.rotate_line(self.sub_center_line, + self.max_angle)
         self.Rdom_inner_bound = self.rotate_line(self.Rdom_center_line, + self.max_angle)
         self.Rsub_inner_bound = self.rotate_line(self.Rsub_center_line, - self.max_angle)
 
     def set_dominance(self, dominance):
-        tstart = time.time()
         self.left_dominant = bool(dominance)
 
         self.dom_center_line = self.Ldom_center_line if self.left_dominant else self.Rdom_center_line
         self.sub_center_line = self.Lsub_center_line if self.left_dominant else self.Rsub_center_line
         self.dom_inner_bound = self.Ldom_inner_bound if self.left_dominant else self.Rdom_inner_bound
         self.sub_inner_bound = self.Lsub_inner_bound if self.left_dominant else self.Rsub_inner_bound
-        #self.dom_outer_bound = self.Ldom_outer_bound if self.left_dominant else self.Rdom_outer_bound
-        #self.sub_outer_bound = self.Lsub_outer_bound if self.left_dominant else self.Rsub_outer_bound
 
         self.min_angle_line = LineString([self.dom_center_line.coords[0], self.get_pos_intersection(self.sub_inner_bound, self.visual_space.boundary).coords[0]])
         self.min_angle = math.degrees(self.get_angle_between(
@@ -153,7 +142,6 @@ class Eyes(object):
             self.sub_inner_bound,
             self.sub_center_line
         ))
-        #print 'set_dominance: %s' % (time.time()-tstart)
 
     def to_Line2D(self, line):
         ''' Converts a Shapely line to a matplotlib Line2D '''
@@ -161,47 +149,44 @@ class Eyes(object):
 
     def rotate_line(self, line, angle):
         ''' Wrapper function for rotating the line to an angle and then clipping the rotated line to the visual space. '''
-        tstart = time.time()
         new_line = affinity.rotate(line, angle, origin=line.coords[0])
         intersection_point = self.get_pos_intersection(new_line, self.visual_space.boundary)
-        #print 'rotate_line: %s'  % (time.time() - tstart)
         return LineString([Point(line.coords[0][0], line.coords[0][1]), intersection_point])
 
     def get_pos_intersection(self, e1, e2):
         ''' Calculates the intersection between two entities. '''
         # Hack: extend the line to make sure there is an intersection point
-        tstart = time.time()
         extended_point = Point(e1.coords[1][0] + (e1.coords[1][0] - e1.coords[0][0]) / e1.length * e1.length**2,
                                e1.coords[1][1] + (e1.coords[1][1] - e1.coords[0][1]) / e1.length * e1.length**2)
         e1 = LineString([Point(e1.coords[0][0], e1.coords[0][1]), extended_point])
         intersection_point = e1.intersection(e2)
-        #print 'get_pos_intersection: %s' % (time.time() - tstart)
         return intersection_point
 
     def get_angle_between(self, line1, line2):
         ''' Uses SymPy to calculate the angle between two lines. Assumes input formatted as Shapely lines. '''
-        tstart = time.time()
         return SymLine.angle_between(
             SymLine(SymPoint(*line1.coords[0]), SymPoint(*line1.coords[1])),
             SymLine(SymPoint(*line2.coords[0]), SymPoint(*line2.coords[1]))
         )
-        #print 'get_angle_between: %s' % (time.time() - tstart)
 
     def move_eyes(self, angle_dom_eye, angle_sub_eye):
-        tstart = time.time()
         self.dom_focus_line = self.rotate_line(self.dom_center_line, angle_dom_eye)
         self.sub_focus_line = self.rotate_line(self.sub_center_line, angle_sub_eye)
         focus_point = self.get_pos_intersection(self.dom_focus_line, self.sub_focus_line)
-        #embed()
         self.attended_points.append((focus_point.x, focus_point.y))
         #self.attended_points.append((-focus_point.x, focus_point.y)) #easy fix to not have to switch the dominant eye for making prototypes
-        #print 'move_eyes: %s'  % (time.time() - tstart)
 
         if type(focus_point) != GeometryCollection:
             return focus_point
 
         return None
 
+    def attend_to(self, x, y):
+        self.dom_focus_line = LineString([self.dom_center_line.coords[0], [x, y]])
+        self.sub_focus_line = LineString([self.sub_center_line.coords[0], [x, y]])
+        self.attended_points.append((x, y))
+
+    '''
     def create_prototypes(self, shape = (10,10)):
             prototypes = np.zeros(shape=(shape[0] * shape[1], 2))
             self.set_dominance(0)
@@ -234,6 +219,24 @@ class Eyes(object):
 
 
             return prototypes
+    '''
+    def create_prototypes(self, shape=(10, 10)):
+        self.set_dominance(1)
+
+        visual_field_origin = self.get_pos_intersection(self.dom_inner_bound, self.sub_inner_bound)
+        cyclopean_line = LineString([[visual_field_origin.x, visual_field_origin.y], [visual_field_origin.x, self.max_distance]])
+        point = self.get_pos_intersection(cyclopean_line, self.visual_space.boundary)
+
+       # print math.degrees(N(self.angle_between(self.sub_inner_bound, LineString([cyclopean_line, []]))))
+
+        for radius in np.linspace(visual_field_origin.y, point.y - visual_field_origin.y, num=shape[1]):
+            circle = Point(visual_field_origin.x, visual_field_origin.y).buffer(radius)
+            for angle in np.linspace(-self.max_angle, self.max_angle, num=shape[0]):
+                rotated_cyclopean_line = self.rotate_line(cyclopean_line, angle)
+                point = self.get_pos_intersection(rotated_cyclopean_line, circle.boundary)
+                self.attend_to(point.x, point.y)
+                self.redraw()
+
 
     def create_dataset(self, n_datapoints=100000, train_file='train_data.p', val_file='validation_data.p',
                            test_file='test_data.p', validation_size=0.1, test_size=0.1):
