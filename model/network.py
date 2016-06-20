@@ -13,6 +13,7 @@ from arm import Arm
 from tqdm import tqdm
 from util import iterate_data, evaluate
 import matplotlib.pyplot as plt
+from eye import Eyes
 
 batch_size = 10000
 
@@ -27,7 +28,7 @@ def create_network(prototypes, n_output = 2):
 
     return l_out
 
-def train_network(network):
+def train_network(network, train_data = 'train_data.p', val_data = 'validation_data.p'):
     
     input_var = T.fmatrix()
     target_var = T.fmatrix()
@@ -53,7 +54,7 @@ def train_network(network):
     print "Train network"
 
     for e in tqdm(range(epochs)):
-        for input_batch, output_batch in iterate_data():
+        for input_batch, output_batch in iterate_data(data_file = train_data):
             train_loss = train_fn(input_batch, output_batch)
         #print " train loss: \t\t{}".format(loss)
 
@@ -61,7 +62,7 @@ def train_network(network):
         total_mean = 0
         total_std = 0
         n = 0
-        for inp_val, out_val in iterate_data(data_file = 'validation_data.p'):
+        for inp_val, out_val in iterate_data(data_file = val_data):
             predictions, loss = val_fn(inp_val, out_val)
             dist, mean, std = evaluate(predictions, out_val)
             n+=1
@@ -108,7 +109,10 @@ def main():
 
 if __name__ == '__main__':
     arm = Arm(visualize = False)
-    network = create_network(arm.create_prototypes(shape=(20,20),redraw = False))
+    eyes = Eyes(visualize = False)
+    proto = eyes.create_prototypes()
+    network = create_network(proto)
+    #network = create_network(arm.create_prototypes(shape=(20,20),redraw = False))
     train_network(network)
     """
     arm = Arm(visualize=False)

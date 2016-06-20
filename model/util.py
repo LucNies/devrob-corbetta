@@ -8,6 +8,8 @@ Created on Mon Jun  6 14:53:21 2016
 import pickle
 import numpy as np
 from IPython import embed
+import arm
+import eye
 
 def iterate_data(data_file = 'train_data.p', batch_size = 1000):
     
@@ -43,10 +45,27 @@ def evaluate(x, y):
     return rooted, rooted.mean(), rooted.std()
     
         
+def combine_prototypes(proto_a, proto_b):
+    
+    #[100][2] --> [100*100][4]
+    
+    result = np.zeros(shape = (proto_a.shape[0]*proto_b.shape[0], proto_a.shape[1]+proto_b.shape[1]))
+    rep_size = proto_a.shape[0]
+    
+    for i, proto in enumerate(proto_b):
+        proto = np.tile(proto, rep_size).reshape((rep_size, proto_b.shape[1]))
+        result[i*rep_size:i*rep_size+rep_size] = np.hstack((proto_a, proto))
 
+    
+    return result
 
 if __name__ == "__main__":
     
-    for inputs, targets in iterate_data():
-        dist, mean, std = evaluate(inputs, inputs+0.5)
-        print mean, std
+    a = arm.Arm(origin = 12, visualize = False)
+    eyes = eye.Eyes(origin = 12, visualize = False)
+    proto_arm = a.create_prototypes()
+    proto_eyes = eyes.create_prototypes()
+    combi = combine_prototypes(proto_arm, proto_eyes)
+    embed()
+    
+    

@@ -182,9 +182,9 @@ def save_data(arm):
 def main():
     
     arm = Arm(origin=12, visualize=True)
-    arm.create_dataset(n_datapoints=50000)
+    #arm.create_dataset(n_datapoints=50000)
 
-    #arm.create_prototypes(redraw= True)
+    arm.create_prototypes(redraw= True)
     wait = raw_input("Press enter when done...")
     """ 
     for i in tqdm(range(1000000)):

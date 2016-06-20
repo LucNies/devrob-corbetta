@@ -186,60 +186,38 @@ class Eyes(object):
         self.sub_focus_line = LineString([self.sub_center_line.coords[0], [x, y]])
         self.attended_points.append((x, y))
 
-    '''
-    def create_prototypes(self, shape = (10,10)):
-            prototypes = np.zeros(shape=(shape[0] * shape[1], 2))
-            self.set_dominance(0)
-            dom_stepsize = (abs(self.max_angle)+abs(self.min_angle))/shape[0]
-            print dom_stepsize
-            print "dom angles: "
-            print np.arange(-self.min_angle, self.max_angle, dom_stepsize)
-            for dom_angle in  np.arange(-self.min_angle, self.max_angle+dom_stepsize, dom_stepsize): #other way to include end of list?
-                print "dom angles: "
-                print np.arange(-self.min_angle, self.min_angle, dom_stepsize)
-                #embed()
-                sub_max_angle = self.calc_angle_submissive_eye(dom_angle)#dirty fix
-                sub_min_angle = self.sub_min_angle
-                #if (sub_max_angle-sub_min_angle) > 0:
-                sub_stepsize = (abs(sub_max_angle- -self.max_angle))/shape[1]
-                print 'subs step size{}'.format(sub_stepsize)
-                print 'sub angles'
-                print np.arange(-sub_min_angle, sub_max_angle, sub_stepsize)
-                #else:
-                   # sub_stepsize = sub_max_angle
 
-                for sub_angle in np.arange(-self.max_angle,sub_max_angle, sub_stepsize):
-                #print dom_angle,sub_angle, self.sub_min_angle, sub_max_angle
-
-
-                    self.move_eyes(dom_angle, sub_angle-0.01)
-                    self.redraw()
-
-                    wait = raw_input("Press enter when done...")
-
-
-            return prototypes
-    '''
     def create_prototypes(self, shape=(10, 10)):
         self.set_dominance(1)
-
+        prototypes = np.zeros(shape = (shape[0]*shape[1], 2))
+        
+        
         visual_field_origin = self.get_pos_intersection(self.dom_inner_bound, self.sub_inner_bound)
         cyclopean_line = LineString([[visual_field_origin.x, visual_field_origin.y], [visual_field_origin.x, self.max_distance]])
         point = self.get_pos_intersection(cyclopean_line, self.visual_space.boundary)
 
        # print math.degrees(N(self.angle_between(self.sub_inner_bound, LineString([cyclopean_line, []]))))
-
+        i = 0
         for radius in np.linspace(visual_field_origin.y, point.y - visual_field_origin.y, num=shape[1]):
             circle = Point(visual_field_origin.x, visual_field_origin.y).buffer(radius)
             for angle in np.linspace(-self.max_angle, self.max_angle, num=shape[0]):
                 rotated_cyclopean_line = self.rotate_line(cyclopean_line, angle)
                 point = self.get_pos_intersection(rotated_cyclopean_line, circle.boundary)
-                self.attend_to(point.x, point.y)
-                self.redraw()
+                prototypes[i] = [point.x, point.y]
+                i+=1
+                #self.attend_to(point.x, point.y)
+                #self.redraw()
+
+        return prototypes
+
+    """
+        returns [n_datapoints][[dom_angle, sub_angle], [x,y]]
+        Make sure the dominant eye is consitent!
+    """
+    def create_dataset(self, n_datapoints=10000, train_file = 'train_data_eyes.p', val_file = 'validation_data_eyes.p', test_file = 'test_data_eyes.p', validation_size = 0.1, test_size = 0.1):
+        
 
 
-    def create_dataset(self, n_datapoints=100000, train_file='train_data.p', val_file='validation_data.p',
-                           test_file='test_data.p', validation_size=0.1, test_size=0.1):
         print "Create datapoints"
         data_points = np.zeros((n_datapoints, 2, 2), dtype=np.float32)
         dominance_left_set = False
@@ -267,6 +245,8 @@ class Eyes(object):
 
         embed()
 
+
+        np.random.shuffle(data_points)
         print "Datapoints created, saving to file..."
         train_size = len(data_points) * (1 - validation_size - test_size)
         validation_size = len(data_points) * validation_size
@@ -287,3 +267,10 @@ class Eyes(object):
 
         print "Done saving"
         return data_points
+
+
+if __name__ == '__main__':
+    
+    eye = Eyes(origin=0, visualize=True)
+    data_points = eye.create_dataset(n_datapoints = 100000)
+    embed()
