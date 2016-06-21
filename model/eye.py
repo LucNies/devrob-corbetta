@@ -9,7 +9,6 @@ from sympy.geometry import Point as SymPoint
 from shapely.geometry import Point, LineString, GeometryCollection
 from shapely import affinity
 from fractions import gcd
-
 from tqdm import tqdm
 import time
 from IPython import embed
@@ -152,7 +151,10 @@ class Eyes(object):
         new_line = affinity.rotate(line, angle, origin=line.coords[0])
         intersection_point = self.get_pos_intersection(new_line, self.visual_space.boundary)
         return LineString([Point(line.coords[0][0], line.coords[0][1]), intersection_point])
-
+    
+    """
+    Old
+    """
     def get_pos_intersection(self, e1, e2):
         ''' Calculates the intersection between two entities. '''
         # Hack: extend the line to make sure there is an intersection point
@@ -180,7 +182,23 @@ class Eyes(object):
             return focus_point
 
         return None
-
+        
+    def calculate_angles(self, x, y):
+        
+        def sign(x):
+            if x >= 0:
+                return 1
+            else:
+                return -1
+        
+        origin_left = - self.inter_eye_distance/2
+        origin_right =  self.inter_eye_distance/2
+        # left eye
+        angle_left =-( 90 - math.degrees(math.atan2(y, (x - origin_left))))
+        angle_right = -( 90 - math.degrees(math.atan2(y, (x - origin_right))))
+        return angle_left, angle_right
+    
+    
     def attend_to(self, x, y):
         self.dom_focus_line = LineString([self.dom_center_line.coords[0], [x, y]])
         self.sub_focus_line = LineString([self.sub_center_line.coords[0], [x, y]])
@@ -209,15 +227,56 @@ class Eyes(object):
                 #self.redraw()
 
         return prototypes
+        
+    def random_eye_movement(self, n_datapoints = 10):
+        data_points = np.zeros((n_datapoints, 2, 2), dtype=np.float32)
+        dominance_left_set = False
+        dominance_right_set = False
+        for i in range(n_datapoints):
+            if not dominance_left_set:
+                self.set_dominance(1)
+                dominance_left_set = True
+            if i > n_datapoints / 2 and not dominance_right_set:
+                self.set_dominance(0)
+                dominance_right_set = True
+
+            if self.left_dominant:
+                angle_dom_eye = random.uniform(-self.max_angle, self.min_angle)
+                angle_sub_eye = random.uniform(self.calc_angle_submissive_eye(angle_dom_eye), self.max_angle)
+                point = self.move_eyes(angle_dom_eye, angle_sub_eye)
+                data_points[i] = [[angle_dom_eye, angle_sub_eye], [point.x, point.y]]
+                print "Point: "
+                print str(angle_dom_eye) + " " + str(angle_sub_eye)
+                calculated_point = self.calculate_angles(point.x, point.y)
+                print str(calculated_point[0]) + " " + str(calculated_point[1])
+            else:
+                angle_dom_eye = random.uniform(-self.min_angle, self.max_angle)
+                angle_sub_eye = random.uniform(-self.max_angle, self.calc_angle_submissive_eye(angle_dom_eye))
+                point = self.move_eyes(angle_dom_eye, angle_sub_eye)
+                data_points[i] = [[angle_sub_eye, angle_dom_eye], [point.x, point.y]]
+                print "Point: "
+                print str(angle_sub_eye) + " " + str(angle_dom_eye)
+                calculated_point = self.calculate_angles(point.x, point.y)
+                print str(calculated_point[0]) + " " + str(calculated_point[1])
 
     """
-        returns [n_datapoints][[dom_angle, sub_angle], [x,y]]
+        returns [n_datapoints][[left_angle, right_angle], [x,y]]
         Make sure the dominant eye is consitent!
     """
-    def create_dataset(self, n_datapoints=10000, train_file = 'train_data_eyes.p', val_file = 'validation_data_eyes.p', test_file = 'test_data_eyes.p', validation_size = 0.1, test_size = 0.1):
+    def create_dataset(self, n_datapoints=10000, train_file = 'train_data_eyes_new.p', val_file = 'validation_data_eyes_new.p', test_file = 'test_data_eyes_new.p', validation_size = 0.1, test_size = 0.1):
         
+        print "Create datapoints"
+        self.set_dominance(1) #left eye
+        data_points = np.zeros((n_datapoints, 2, 2), dtype=np.float32)
+        prototypes = self.create_prototypes(shape = (math.sqrt(n_datapoints),math.sqrt(n_datapoints)))
+        for i, proto in tqdm(enumerate(prototypes)):
+            x, y = proto[0], proto[1]
+            left, right = self.calculate_angles(x, y)
+            data_points[i] = [[left, right],[x, y]]
 
-
+                
+        
+        """
         print "Create datapoints"
         data_points = np.zeros((n_datapoints, 2, 2), dtype=np.float32)
         dominance_left_set = False
@@ -240,11 +299,8 @@ class Eyes(object):
                 angle_sub_eye = random.uniform(-self.max_angle, self.calc_angle_submissive_eye(angle_dom_eye))
                 point = self.move_eyes(angle_dom_eye, angle_sub_eye)
                 data_points[i] = [[angle_sub_eye, angle_dom_eye], [point.x, point.y]]
-            if i % 1000 == 0:
-                print i
-
-        embed()
-
+        
+        """
 
         np.random.shuffle(data_points)
         print "Datapoints created, saving to file..."
@@ -271,6 +327,16 @@ class Eyes(object):
 
 if __name__ == '__main__':
     
-    eye = Eyes(origin=0, visualize=True)
-    data_points = eye.create_dataset(n_datapoints = 100000)
-    embed()
+    eye = Eyes(origin = 0, visualize = False)
+    #eye.random_eye_movement()
+    data_points = eye.create_dataset(n_datapoints = 10000)
+    """
+    eye = Eyes(origin = 12, visualize= True)
+    eye.set_dominance(0)
+    eye.calculate_lines()
+    for point in data_points:
+        eye.attend_to(point[1][0], point[1][1])
+        eye.redraw()
+   """ 
+    
+    

@@ -10,6 +10,7 @@ import theano
 import lasagne
 from IPython import embed
 
+
 class RBFLayer(lasagne.layers.Layer):
     
     

@@ -10,6 +10,7 @@ import numpy as np
 from IPython import embed
 import arm
 import eye
+import math
 
 def iterate_data(data_file = 'train_data.p', batch_size = 1000):
     
@@ -58,6 +59,39 @@ def combine_prototypes(proto_a, proto_b):
 
     
     return result
+    
+
+def sign(x):
+    if x >= 0:
+        return 1
+    else:
+        return -1
+
+
+def calc_intersect(left, right):
+    
+    
+    left = -sign(left) * (90 - abs(left))
+    right = -sign(right) * (90-abs(right))
+    
+    inter_eye_distance = 6    
+    
+    m1 = math.tan(math.radians(left))
+    m2 = math.tan(math.radians(right))
+    
+    n1 = (inter_eye_distance/2) * m1
+    n2 = (-inter_eye_distance/2) * m2
+    
+    x = (n2-n1)/(m1-m2)
+    y = (m1*x+n1)
+    
+    return x, y
+
+"""
+Always input dataset from the arm
+"""
+def combine_data_sets(dataset):
+    pass
 
 if __name__ == "__main__":
     
