@@ -24,8 +24,10 @@ def create_network(prototypes, n_output = 2):
     
     
     l_rbf = RBFLayer(l_in, prototypes)
+
+    l_hidden = DenseLayer(l_rbf, num_units=prototypes.shape[0], nonlinearity=lasagne.nonlinearities.LeakyRectify())
     
-    l_out = DenseLayer(l_rbf, num_units = n_output, nonlinearity=lasagne.nonlinearities.LeakyRectify()) #might need leaky rectify, espacially during test time
+    l_out = DenseLayer(l_hidden, num_units = n_output, nonlinearity=lasagne.nonlinearities.LeakyRectify()) #might need leaky rectify, espacially during test time
 
     return l_out
     
@@ -50,8 +52,6 @@ def train_network_double(network, network1, train_data1 = 'train_data.p', val_da
     stds = np.zeros(epochs)
     train_losses = np.zeros(epochs)
     val_losses = np.zeros(epochs)
-
-
     print "Train network"
 
     for e in tqdm(range(epochs)):
@@ -66,7 +66,7 @@ def train_network_double(network, network1, train_data1 = 'train_data.p', val_da
         for inp_val, out_val in iterate_data(data_file = val_data):
             predictions, loss = val_fn(inp_val, out_val)
             dist, mean, std = evaluate(predictions, out_val)
-            n+=1
+            n += 1
             total_mean+=mean
             total_std+= std
 
@@ -100,11 +100,11 @@ def train_network(network, train_data = 'train_data.p', val_data = 'validation_d
     input_var = T.fmatrix()
     target_var = T.fmatrix()
     pred = lasagne.layers.get_output(network, inputs = input_var)
-    loss = lasagne.objectives.squared_error(pred, target_var)
-    loss = loss.mean()
+    train_loss = lasagne.objectives.squared_error(pred, target_var)
+    train_loss = lasagne.objectives.aggregate(train_loss, mode='mean')
     params = lasagne.layers.get_all_params(network, trainable=True)
-    updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.01, momentum=0.9)
-    train_fn = theano.function([input_var, target_var], loss, updates=updates)
+    updates = lasagne.updates.nesterov_momentum(train_loss, params, learning_rate=0.01, momentum=0.9)
+    train_fn = theano.function([input_var, target_var], train_loss, updates=updates)
 
     val_prediction = layers.get_output(network, inputs = input_var, deterministic = True)
     val_loss = lasagne.objectives.squared_error(val_prediction, target_var)
@@ -235,15 +235,16 @@ def main():
 
 
 if __name__ == '__main__':
-    #arm = Arm(visualize = False)
-    eyes = Eyes(visualize = False, origin = 0)
-    proto = eyes.create_prototypes(shape = (20,20))
+    arm = Arm(visualize = False)
+    proto = arm.create_prototypes(shape=(20,20))
+    #eyes = Eyes(visualize = False, origin = 0)
+    #proto = eyes.create_prototypes(shape = (20,20))
     #eyes.create_dataset(n_datapoints=1000000)
     #test(proto)
     network = create_network(proto)
     #network = create_network(arm.create_prototypes(shape=(20,20),redraw = False))
     #train_network(network)
-    train_network(network, train_data = 'train_data_eyes_new.p', val_data = 'validation_data_eyes_new.p' )
+    train_network(network, train_data = 'train_data.p', val_data = 'validation_data.p' )
     """
     arm = Arm(visualize=False)
     prototypes = arm.create_prototypes()
