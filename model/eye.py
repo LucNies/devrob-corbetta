@@ -16,7 +16,7 @@ from IPython import embed
 
 
 class Eyes(object):
-    def __init__(self, origin, visualize=True):
+    def __init__(self, origin, visualize=True, dom = 0):
         self.center_origin = origin
         self.inter_eye_distance = 6
         self.attended_points = []
@@ -25,8 +25,8 @@ class Eyes(object):
         self.max_angle = 60
         self.left_dominant = True
         self.visualize = visualize
-
         self.calculate_lines()
+        self.set_dominance(dom)
         if self.visualize:
             self._init_graphics()
 
@@ -203,7 +203,8 @@ class Eyes(object):
         self.dom_focus_line = LineString([self.dom_center_line.coords[0], [x, y]])
         self.sub_focus_line = LineString([self.sub_center_line.coords[0], [x, y]])
         self.attended_points.append((x, y))
-
+        
+        return x, y
 
     def create_prototypes(self, shape=(10, 10)):
         self.set_dominance(1)
@@ -263,7 +264,7 @@ class Eyes(object):
         returns [n_datapoints][[left_angle, right_angle], [x,y]]
         Make sure the dominant eye is consitent!
     """
-    def create_dataset(self, n_datapoints=10000, train_file = 'train_data_eyes_new.p', val_file = 'validation_data_eyes_new.p', test_file = 'test_data_eyes_new.p', validation_size = 0.1, test_size = 0.1):
+    def create_dataset(self, n_datapoints=10000, train_file = 'train_data_eyes.p', val_file = 'validation_data_eyes.p', test_file = 'test_data_eyes.p', validation_size = 0.1, test_size = 0.1):
         
         print "Create datapoints"
         self.set_dominance(1) #left eye
@@ -333,7 +334,6 @@ if __name__ == '__main__':
     """
     eye = Eyes(origin = 12, visualize= True)
     eye.set_dominance(0)
-    eye.calculate_lines()
     for point in data_points:
         eye.attend_to(point[1][0], point[1][1])
         eye.redraw()
