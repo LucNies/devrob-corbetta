@@ -26,7 +26,7 @@ class Eyes(object):
         self.left_dominant = True
         self.visualize = visualize
         self.calculate_lines()
-        self.set_dominance(dom)
+        self.set_dominance(dom) #0 = right eye, 1 = left eye
         if self.visualize:
             self._init_graphics()
 

@@ -58,7 +58,7 @@ def combine_prototypes(proto_a, proto_b):
         result[i*rep_size:i*rep_size+rep_size] = np.hstack((proto_a, proto))
 
     
-    return result
+    return result.astype('float32')
     
 
 def sign(x):
