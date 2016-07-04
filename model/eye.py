@@ -256,7 +256,7 @@ class Eyes(object):
         
         return x, y
 
-    def create_prototypes(self, shape=(10, 10)):
+    def create_prototypes(self, shape=(10, 10), redraw=False):
         """
         Creates a uniformly distributed set of points in the visual space as prototypes for the RBFs
         :param shape:
@@ -281,6 +281,9 @@ class Eyes(object):
                 cyclo_intersection_point = self.get_pos_intersection(rotated_cyclopean_line, circle.boundary)
                 prototypes[i] = [cyclo_intersection_point.x, cyclo_intersection_point.y]
                 i+=1
+                if redraw:
+                    self.attend_to(cyclo_intersection_point.x, cyclo_intersection_point.y)
+                    self.redraw()
 
         return prototypes
         
@@ -360,8 +363,9 @@ class Eyes(object):
 
 
 if __name__ == '__main__':
-    eye = Eyes(origin = 0, visualize = False)
-    data_points = eye.create_dataset(n_datapoints = 10000)
+    eye = Eyes(origin = 0, visualize = True)
+    embed()
+    #data_points = eye.create_dataset(n_datapoints = 10000)
     """
     eye = Eyes(origin = 12, visualize= True)
     eye.set_dominance(0)
