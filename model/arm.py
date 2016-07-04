@@ -8,7 +8,6 @@ import numpy as np
 import random
 import pickle
 from fractions import gcd
-import scipy.optimize
 from IPython import embed
 
 
@@ -77,29 +76,19 @@ class Arm(object):
 
     def calculate_angles(self, x, y):
         """
-        Calculates inverse kinematics for given position
+        Inverse kinematics
         :param x:
         :param y:
-        :return: joint angles
+        :return: angles for shoulder and elbow
         """
+        R = np.sqrt(x**2 + y**2)
+        if R > self.L**2:
+            raise Exception('Outside of reachable space!')
+        psi = np.arccos((self.L**2 - self.L**2 + R**2) / (2 * self.L * R))
+        phi1 = np.arctan2(y,x) - psi
+        phi2 = np.arccos((x - self.L*np.cos(phi1)) / self.L) - phi1
 
-        def distance_to_default(q, *args):
-            q0 = np.array([math.radians(self.shoulder_angle),math.radians(self.elbow_angle)])
-            weight = [1,1]
-            return np.sqrt(np.sum([(qi - q0i)**2 * wi for qi, q0i, wi in zip(q, q0, weight)]))
-
-        def x_constraint(q, xy):
-            new_x = (self.L*np.cos(math.radians(q[0])) + self.L*np.cos(math.radians(q[0]) + math.radians(q[1]))) - xy[0]
-            return new_x
-
-        def y_constraint(q, xy):
-            new_y = (self.L*np.sin(math.radians(q[0])) + self.L*np.sin(math.radians(q[0]) + math.radians(q[1]))) - xy[1]
-            return new_y
-
-        angles = scipy.optimize.fmin_slsqp(func=distance_to_default,
-                                          x0=[math.radians(self.shoulder_angle), math.radians(self.elbow_angle)], eqcons=[x_constraint, y_constraint],
-                                          args=((x,y),))
-        return [math.degrees(angle) for angle in angles]
+        return math.degrees(phi1), math.degrees(phi2)
 
     def move_arm(self, shoulder_angle, elbow_angle, redraw=True):
         """
@@ -122,8 +111,7 @@ class Arm(object):
             self.redraw()
 
         return x, y
-    
-    
+
     def create_dataset(self, n_datapoints=100000, train_file='train_data.p', val_file='validation_data.p', test_file='test_data.p', validation_size=0.1, test_size=0.1):
         """
         Creates a dataset with n_datapoints and saves it. Not always exactly n_datapoints due to rounding errors
@@ -226,7 +214,7 @@ def save_data(arm):
     print "Saved" 
 
 def main():
-    arm = Arm(origin=12, visualize=True)
+    arm = Arm(origin=0, visualize=True)
     #arm.create_dataset(n_datapoints=50000)
     embed()
     #arm.create_prototypes(redraw= True)
