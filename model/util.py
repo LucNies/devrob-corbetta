@@ -22,7 +22,7 @@ def iterate_data(data_file = 'train_data.p', batch_size = 1000):
         with open(data_file, 'rb') as f_in:
             data_points = np.array(pickle.load(f_in), dtype = "float32")
         
-    except IOError:
+    except:
         print "Could not load file: {}".format(data_file)
         return
 

@@ -324,7 +324,7 @@ class Eyes(object):
                 print str(calculated_point[0]) + " " + str(calculated_point[1])
 
 
-    def create_dataset(self, n_datapoints=10000, train_file = 'train_data_eyes.p', val_file = 'validation_data_eyes.p', test_file = 'test_data_eyes.p', validation_size = 0.1, test_size = 0.1):
+    def create_dataset(self, n_datapoints=100000, train_file = 'train_data_eyes.p', val_file = 'validation_data_eyes.p', test_file = 'test_data_eyes.p', validation_size = 0.1, test_size = 0.1):
         """
         Creates a dataset with n_datapoints and saves it. Not always exactly n_datapoints due to rounding errors. Make sure the dominant eye is consitent!
 
@@ -363,9 +363,10 @@ class Eyes(object):
 
 
 if __name__ == '__main__':
-    eye = Eyes(origin = 0, visualize = True)
-    embed()
-    #data_points = eye.create_dataset(n_datapoints = 10000)
+
+    eye = Eyes(origin = 0, visualize = False)
+    data_points = eye.create_dataset(n_datapoints = 100000, train_file= '100000_train.p', val_file= '100000_val.p', test_file= '100000_test.p')
+
     """
     eye = Eyes(origin = 12, visualize= True)
     eye.set_dominance(0)
