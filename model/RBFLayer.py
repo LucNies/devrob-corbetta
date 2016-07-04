@@ -12,7 +12,9 @@ from IPython import embed
 
 
 class RBFLayer(lasagne.layers.Layer):
-    
+    """
+    Creates an RBF layer using lasagne
+    """
     
     def __init__(self, incoming, prototypes, beta = 0.5, **kwargs):
         super(RBFLayer, self).__init__(incoming, **kwargs)
