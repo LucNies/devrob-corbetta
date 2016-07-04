@@ -1,3 +1,7 @@
+"""
+Simulates a 2D arm.
+"""
+
 import matplotlib.pyplot as plt
 import math
 import numpy as np
@@ -47,6 +51,9 @@ class Arm(object):
         self.reachable_scatter = plt.scatter([], [])
 
     def random_arm_pos(self):
+        """
+        Picks a random shoulder and elbow angle and remembers destination point
+        """
         shoulder_angle  = random.randint(0, self.max_shoulder_angle) * (math.pi / 180)
         changed = False
         if self.shoulder_joint[1] + self.L * math.sin(shoulder_angle) > 0:
@@ -63,10 +70,13 @@ class Arm(object):
                     changed = True
         
 
-    """
-    Assumes the given anlges are allowed
-    """    
-    def move_arm(self, shoulder_angle, elbow_angle, redraw = True):
+
+    def move_arm(self, shoulder_angle, elbow_angle, redraw=True):
+        """
+        Moves arm according to shoulder and elbow angles. Assumes the given anlges are allowed.
+
+        returns (x,y)
+        """
         shoulder_angle *= (math.pi / 180)
         elbow_angle = shoulder_angle + elbow_angle*(math.pi / 180)
         self.elbow_joint = (self.shoulder_joint[0] + self.L * math.cos(shoulder_angle),
@@ -74,25 +84,23 @@ class Arm(object):
         self.wrist_joint = (self.elbow_joint[0] + self.L * math.cos(elbow_angle),
                             self.elbow_joint[1] + self.L * math.sin(elbow_angle))
 
-#        self.elbow_joint = (self.L * math.cos(shoulder_angle), self.L * math.sin(shoulder_angle))
- #       self.wrist_joint = (self.L * math.cos(elbow_angle), self.L * math.sin(elbow_angle))
         datapoint = (self.wrist_joint, (shoulder_angle, elbow_angle))
         lower_arm = [self.elbow_joint, self.wrist_joint]
         x, y = lower_arm[1]
         self.reached_points.append(datapoint)
         if redraw:
             self.redraw()
-            
+
         return x, y
     
     
-    """
-    Not always exactly n_datapoints due to rounding errors
-    
-    returns [n_datapoints][[shoulder_angle, elbow_angle], [x,y]]
-    """
-    def create_dataset(self, n_datapoints = 100000, train_file = 'train_data.p', val_file = 'validation_data.p', test_file = 'test_data.p', validation_size = 0.1, test_size = 0.1):
-                
+    def create_dataset(self, n_datapoints=100000, train_file='train_data.p', val_file='validation_data.p', test_file='test_data.p', validation_size=0.1, test_size=0.1):
+        """
+        Creates a dataset with n_datapoints and saves it. Not always exactly n_datapoints due to rounding errors
+
+        returns [n_datapoints][[shoulder_angle, elbow_angle], [x,y]]
+        """
+
         print "Create datapoints"
         step_size = math.sqrt((self.max_elbow_angle*self.max_shoulder_angle)/(n_datapoints*1.0))
         
@@ -112,7 +120,6 @@ class Arm(object):
         print "Datapoints created, saving to file..."
         train_size = len(data_points)*(1-validation_size-test_size)
         validation_size = len(data_points)*validation_size
-        test_size = len(data_points)*validation_size
         
         train_data = data_points[:train_size]
         val_data = data_points[train_size:train_size+validation_size]
@@ -130,7 +137,13 @@ class Arm(object):
         print "Done saving" 
         return data_points
         
-    def create_prototypes(self, shape = (10,10), redraw = False):
+    def create_prototypes(self, shape=(10,10), redraw=False):
+        """
+        Creates a uniformly distributed set of points in the reachable space as prototypes for the RBFs
+        :param shape:
+        :param redraw:
+        :return: coordinates for prototypes
+        """
         prototypes = np.zeros(shape = (shape[0]*shape[1], 2)) 
         
         gcd_shoulder = gcd(shape[0],self.max_shoulder_angle)
@@ -141,12 +154,14 @@ class Arm(object):
             for elbow_angle in np.arange(0, self.max_elbow_angle , self.max_elbow_angle/gcd_elbow+1):
                 x, y = self.move_arm(shoulder_angle, elbow_angle, redraw = redraw)
                 prototypes[i] = [x, y]
-                i+=1
-                #print shoulder_angle, elbow_angle
+                i += 1
         
         return prototypes
 
     def redraw(self):
+        """
+        Redraws the arm visualization
+        """
         if self.visualize:
             # Adjust arm segments
             upper_arm = [self.shoulder_joint, self.elbow_joint]
@@ -154,7 +169,7 @@ class Arm(object):
 
             (upper_arm_xs, upper_arm_ys) = zip(*upper_arm)
             (lower_arm_xs, lower_arm_ys) = zip(*lower_arm)
-            #embed()
+
             self.upper_arm_line.set_data(upper_arm_xs, upper_arm_ys)
             self.lower_arm_line.set_data(lower_arm_xs, lower_arm_ys)
 
@@ -170,17 +185,17 @@ class Arm(object):
             plt.plot()
             plt.pause(0.00001)
 
-
-
-
 def save_data(arm):
+    """
+    Save arm positions to file
+    :param arm:
+    """
     with open('output.dat', 'wb') as f_out:
         pickle.dump(arm.reached_points, f_out)
     
     print "Saved" 
 
 def main():
-    
     arm = Arm(origin=12, visualize=True)
     #arm.create_dataset(n_datapoints=50000)
 
