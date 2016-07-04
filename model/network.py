@@ -102,7 +102,7 @@ def train_network_scenario1(prototypes1, prototypes2, origin, train_data='train_
         i = 0
         for input_batch, output_batch in iterate_data(data_file=train_data):
             pred1, train_loss1 = train_fn1(input_batch, output_batch)
-            arm_angles = np.array([arm.calculate_angels(x, y) for [x, y] in input_batch], dtype='float32')  # same targets as arm
+            arm_angles = np.array([arm.calculate_angles(x, y) for [x, y] in input_batch], dtype='float32')  # same targets as arm
             eye_positions = [calc_intersect(left, right) for [left, right] in pred1]  # get x,y from predicted eye angels
             arm_input = np.hstack((input_batch, eye_positions)).astype('float32')  # first the eye coordinates, take care when combining prototypes
             pred2, train_loss2 = train_fn2(arm_input, arm_angles)
@@ -141,6 +141,7 @@ def train_network_scenario1(prototypes1, prototypes2, origin, train_data='train_
             total_std_eye += std_eye
             val_loss_arm += loss_arm
             val_loss_eye += loss_eye
+
 
         # Save epoch data
         means_arm[e] = total_mean_arm / n
@@ -207,7 +208,7 @@ def train_network_scenario1(prototypes1, prototypes2, origin, train_data='train_
     return  # network, predictions
 
 
-def train_network_double(prototypes1, prototypes2, origin, train_data = 'train_data.p', val_data = 'validation_data.p'):
+def train_network_scenario2(prototypes1, prototypes2, origin, train_data = 'train_data.p', val_data = 'validation_data.p'):
     """
     Combines the networks for the arm and the eye. Arm is dominant over the eye, as in scenario 2, so the eye recieves its input from the arm and its target.
     Also plots a lot of information about loss and accuracy.
@@ -302,6 +303,7 @@ def train_network_double(prototypes1, prototypes2, origin, train_data = 'train_d
             total_std_eye += std_eye
             val_loss_arm += loss_arm
             val_loss_eye += loss_eye
+
 
         #Save epoch data
         means_arm[e] = total_mean_arm/n
@@ -534,19 +536,20 @@ if __name__ == '__main__':
     Combine prototypes (for the eye network)
     Train the network
     """
-    """
+
     origin = 0 #make sure the eye and the arm have the same origin!
     arm = Arm(visualize = False, origin = origin)
     print 'Create arm proto'
-    proto_arm = arm.create_prototypes(shape=(5, 5))
-    arm = arm.create_dataset(n_datapoints = 100000)
+    proto_arm = arm.create_prototypes(shape=(10, 10))
+
     eyes = Eyes(visualize = False, origin = origin)
+   # eyes.create_dataset(n_datapoints=100000, train_file='train_data_eyes.p', val_file='validation_data_eyes.p', test_file= 'test_data_eyes.p')
     print 'create eye proto'
-    proto_eye = eyes.create_prototypes(shape = (5, 5))
+    proto_eye = eyes.create_prototypes(shape = (10, 10))
     print 'combine prototypes'
-    proto_eye = combine_prototypes(proto_eye, proto_arm)
+    proto_arm = combine_prototypes(proto_arm, proto_eye)
     print 'To the network!'
-    train_network_double(proto_arm, proto_eye, origin = origin,  train_data = 'train_data.p', val_data = 'validation_data.p' )
+    train_network_scenario1(proto_eye, proto_arm, origin = origin,  train_data = 'train_data_eyes.p', val_data = 'validation_data_eyes.p' )
 
     """
     origin = 0
@@ -554,3 +557,4 @@ if __name__ == '__main__':
     #eye.create_dataset(n_datapoints=1000000)
     proto = arm.create_prototypes((10,10))
     train_network(proto)
+    """

@@ -21,6 +21,7 @@ class RBFLayer(lasagne.layers.Layer):
     
     def get_output_for(self, input, **kwargs):
 
+
         result, updates = theano.scan(fn=lambda row, prototypes: prototypes - row,
                                       sequences=[input],
                                       non_sequences=self.prototypes)
