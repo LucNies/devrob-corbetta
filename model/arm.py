@@ -8,6 +8,9 @@ import numpy as np
 import random
 import pickle
 from fractions import gcd
+import scipy.optimize
+from IPython import embed
+
 
 class Arm(object):
     def __init__(self, origin=0, visualize=True):
@@ -18,6 +21,9 @@ class Arm(object):
         self.shoulder_joint = (self.origin, 0)
         self.elbow_joint = (self.origin, self.L)
         self.wrist_joint = (self.origin, self.L*2)
+
+        self.shoulder_angle = 90
+        self.elbow_angle = 0
 
         self.reached_points = []
 
@@ -68,8 +74,32 @@ class Arm(object):
                     datapoint = (self.wrist_joint, (shoulder_angle, elbow_angle))
                     self.reached_points.append(datapoint)
                     changed = True
-        
 
+    def calculate_angles(self, x, y):
+        """
+        Calculates inverse kinematics for given position
+        :param x:
+        :param y:
+        :return: joint angles
+        """
+
+        def distance_to_default(q, *args):
+            q0 = np.array([math.radians(90),0])
+            weight = [1,1]
+            return np.sqrt(np.sum([(qi - q0i)**2 * wi for qi, q0i, wi in zip(q, q0, weight)]))
+
+        def x_constraint(q, x):
+            x = (self.L*np.cos(math.radians(self.shoulder_angle)) + self.L*np.cos(math.radians(self.shoulder_angle) + math.radians(self.elbow_angle))) - x
+            return x
+
+        def y_constraint(q, y):
+            y = (self.L*np.sin(math.radians(self.shoulder_angle)) + self.L*np.sin(math.radians(self.shoulder_angle) + math.radians(self.elbow_angle))) - y
+            return y
+
+        angles= scipy.optimize.fmin_slsqp(func=distance_to_default,
+                                          x0=[math.radians(self.shoulder_angle), math.radians(self.elbow_angle)], eqcons=[x_constraint, y_constraint],
+                                          args=((x,y),), iprint=0)
+        return [math.degrees(angle) for angle in angles]
 
     def move_arm(self, shoulder_angle, elbow_angle, redraw=True):
         """
@@ -79,6 +109,8 @@ class Arm(object):
         """
         shoulder_angle *= (math.pi / 180)
         elbow_angle = shoulder_angle + elbow_angle*(math.pi / 180)
+        self.shoulder_angle = shoulder_angle
+        self.elbow_angle = elbow_angle
         self.elbow_joint = (self.shoulder_joint[0] + self.L * math.cos(shoulder_angle),
                             self.shoulder_joint[1] + self.L * math.sin(shoulder_angle))
         self.wrist_joint = (self.elbow_joint[0] + self.L * math.cos(elbow_angle),
@@ -198,8 +230,8 @@ def save_data(arm):
 def main():
     arm = Arm(origin=12, visualize=True)
     #arm.create_dataset(n_datapoints=50000)
-
-    arm.create_prototypes(redraw= True)
+    embed()
+    #arm.create_prototypes(redraw= True)
     wait = raw_input("Press enter when done...")
     """ 
     for i in tqdm(range(1000000)):
