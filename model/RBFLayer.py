@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Sun May 29 14:17:28 2016
-
-@author: luc
-"""
 
 import theano.tensor as T
 import theano

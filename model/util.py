@@ -5,6 +5,7 @@ Misc functions
 
 import pickle
 import numpy as np
+import matplotlib.pyplot as plt
 from IPython import embed
 import arm
 import eye
@@ -83,6 +84,24 @@ def sign(x):
     else:
         return -1 # its negative!
 
+def plot_with_limit(arm_data = '../images/distance_arm.npy', eye_data = '../images/distance_eye.npy', ylim = 10):
+    """
+    Plotting arm and eye accuarcy with limits for readablity
+    :return:
+    """
+    plt.figure()
+    axes = plt.axes()
+    axes.set_ylim([0,ylim])
+    arm = np.load(arm_data)
+    eye = np.load(eye_data)
+    eye_plot, = plt.plot(eye, label = 'eye')
+    arm_plot, = plt.plot(arm, label = 'arm')
+    plt.legend(handles = [eye_plot, arm_plot])
+    plt.xlabel('n_epoch')
+    plt.ylabel('Mean distance to target')
+    plt.savefig('../images/final_distance_plot.png')
+    plt.show()
+
 
 def calc_intersect(left, right, inter_eye_distance=6):
     """
@@ -108,3 +127,6 @@ def calc_intersect(left, right, inter_eye_distance=6):
     y = (m1*x+n1)
     
     return x, y
+
+if __name__ == '__main__':
+    plot_with_limit()

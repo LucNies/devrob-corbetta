@@ -50,6 +50,163 @@ def create_network(prototypes, n_outputs = 2, n_inputs = 2):
     return l_out, train_fn, val_fn
 
 
+def train_network_scenario1(prototypes1, prototypes2, origin, train_data='train_data.p', val_data='validation_data.p'):
+    """
+    Combines the networks for the arm and the eye. Arm is dominant over the eye, as in scenario 2, so the eye recieves its input from the arm and its target.
+    Also plots a lot of information about loss and accuracy.
+    Saves the weights of the network
+    Input: prototypes for the arm, prototypes for the eye, point of origin of both models, trainingdata for the arm, validationdata for the eye
+    Output: -
+    """
+
+    epochs = 150  # number of epochs
+
+    print 'network1'
+    network1, train_fn1, val_fn1 = create_network(prototypes1)
+    print 'network2'
+    network2, train_fn2, val_fn2 = create_network(prototypes2, n_inputs=4)
+
+    print 'Networks done'
+    eyes = Eyes(origin=origin, visualize=False)
+    arm = Arm(origin=origin, visualize=False)
+
+    print 'moare stuff'
+    # Arrays for saving performance after each epoch
+    means_arm = np.zeros(epochs)
+    stds_arm = np.zeros(epochs)
+    train_losses_arm = np.zeros(epochs)
+    val_losses_arm = np.zeros(epochs)
+    means_eye = np.zeros(epochs)
+    stds_eye = np.zeros(epochs)
+    train_losses_eye = np.zeros(epochs)
+    val_losses_eye = np.zeros(epochs)
+    dists_eye = np.zeros(epochs)
+    dists_arm = np.zeros(epochs)
+
+    print "Train network"
+
+    for e in tqdm(range(epochs)):
+
+        total_mean_arm = 0
+        total_std_arm = 0
+        total_mean_eye = 0
+        total_std_eye = 0
+        total_error_arm = 0
+        total_error_eye = 0
+        train_loss_arm = 0
+        val_loss_arm = 0
+        train_loss_eye = 0
+        val_loss_eye = 0
+
+        # training epoch
+        i = 0
+        for input_batch, output_batch in iterate_data(data_file=train_data):
+            pred1, train_loss1 = train_fn1(input_batch, output_batch)
+            arm_angles = np.array([arm.calculate_angels(x, y) for [x, y] in input_batch], dtype='float32')  # same targets as arm
+            eye_positions = [calc_intersect(left, right) for [left, right] in pred1]  # get x,y from predicted eye angels
+            arm_input = np.hstack((input_batch, eye_positions)).astype('float32')  # first the eye coordinates, take care when combining prototypes
+            pred2, train_loss2 = train_fn2(arm_input, arm_angles)
+
+            train_loss_arm += train_loss2
+            train_loss_eye += train_loss1
+            i += 1
+        # Take average loss of this epoch
+        train_loss_arm = train_loss_arm / i
+        train_loss_eye = train_loss_eye / i
+
+        n = 0
+        # Validation Epoch
+        for inp_val, out_val in iterate_data(data_file=val_data):
+            predictions_eye, loss_eye = val_fn1(inp_val, out_val)
+            dist_eye, mean_eye, std_eye = evaluate(predictions_eye, out_val)  # dist_arm is for debugging
+
+            arm_angles = np.array([arm.calculate_angles(x, y) for [x, y] in inp_val], dtype='float32')
+            eye_positions = [calc_intersect(left, right) for [left, right] in predictions_eye]
+
+            arm_input = np.hstack((inp_val, eye_positions)).astype('float32')
+            prediction_arm, loss_arm = val_fn2(arm_input, arm_angles)
+            dist_arm, mean_arm, std_arm = evaluate(prediction_arm, inp_val)
+            arm_positions = np.array([arm.move_arm(shoulder, shoulder) for [shoulder, elbow] in prediction_arm])
+
+            arm_error_dist, mean_arm_error, std_arm_error = evaluate(arm_positions, inp_val)
+            eye_error_dist, mean_eye_error, std_eye_error = evaluate(eye_positions, inp_val)
+
+            total_error_arm += mean_arm_error
+            total_error_eye += mean_eye_error
+
+            n += 1
+            total_mean_arm += mean_arm
+            total_std_arm += std_arm
+            total_mean_eye += mean_eye
+            total_std_eye += std_eye
+            val_loss_arm += loss_arm
+            val_loss_eye += loss_eye
+
+        # Save epoch data
+        means_arm[e] = total_mean_arm / n
+        stds_arm[e] = total_std_arm / n
+        train_losses_arm[e] = train_loss_arm
+        val_losses_arm[e] = val_loss_arm / n
+        means_eye[e] = total_mean_eye / n
+        stds_eye[e] = total_std_eye / n
+        train_losses_eye[e] = train_loss_eye
+        val_losses_eye[e] = val_loss_eye / n
+        dists_eye[e] = total_error_eye / n
+        dists_arm[e] = total_error_arm / n
+
+    # Plots
+    # Plot mean and std
+    plt.figure()
+    meanplot_arm, = plt.plot(means_arm, label='mean arm')
+    stdplot_arm, = plt.plot(stds_arm, label='std arm')
+    meanplot_eye, = plt.plot(means_eye, label='mean eye')
+    stdplot_eye, = plt.plot(stds_eye, label='std eye')
+
+    plt.legend(handles=[meanplot_arm, stdplot_arm, meanplot_eye, stdplot_eye])
+    plt.savefig('../images/scenario1/accuracy_combined.png')
+    plt.show()
+
+    # Plot just the means
+    plt.figure()
+    meanplot_arm, = plt.plot(means_arm, label='mean arm')
+    meanplot_eye, = plt.plot(means_eye, label='mean eye')
+    plt.legend(handles=[meanplot_arm, meanplot_eye])
+    plt.savefig('../images/scenario1/accuracy_combined_arm.png')
+
+    # Ploot the train and validations losses
+    plt.figure()
+    trainplot_arm, = plt.plot(train_losses_arm, label='train loss arm')
+    valplot_arm, = plt.plot(val_losses_arm, label='val loss arm')
+    trainplot_eye, = plt.plot(train_losses_eye, label='train loss eye')
+    valplot_eye, = plt.plot(val_losses_eye, label='val loss eye')
+
+    plt.legend(handles=[trainplot_arm, valplot_arm, trainplot_eye, valplot_eye])
+    plt.savefig('../images/scenario1/loss_combined.png')
+    plt.show()
+
+    # Plot distance errors
+    plt.figure()
+    distsplot_arm, = plt.plot(dists_arm, label='Distance Error arm')
+    plt.legend(handles=[distsplot_arm])
+    plt.savefig('../images/scenario1/distance_error_arm.png')
+    plt.show()
+    np.save('../images/scenario1/distance_arm', dists_arm)
+
+    # Plot Distance error ot the eye
+    plt.figure()
+    distsplot_eye, = plt.plot(dists_eye, label='Distance Error eye')
+    plt.legend(handles=[distsplot_eye])
+    plt.savefig('../images/scenario1/distance_error_eye.png')
+    plt.show()
+    np.save('../images/scenario1/distance_eye', dists_eye)
+
+    # Save the weights
+    np.save('network_arm_s1', layers.get_all_param_values(network1))
+    np.save('network_eye_s1', layers.get_all_param_values(network2))
+
+    return  # network, predictions
+
+
 def train_network_double(prototypes1, prototypes2, origin, train_data = 'train_data.p', val_data = 'validation_data.p'):
     """
     Combines the networks for the arm and the eye. Arm is dominant over the eye, as in scenario 2, so the eye recieves its input from the arm and its target.
@@ -230,6 +387,8 @@ def train_network(prototypes, train_data = 'train_data.p', val_data = 'validatio
     val_losses = np.zeros(epochs)
     dists = np.zeros(epochs)
 
+    arm = Arm(origin=0, visualize=False)
+
     print "Train network"
 
     for e in tqdm(range(epochs)):
@@ -248,8 +407,8 @@ def train_network(prototypes, train_data = 'train_data.p', val_data = 'validatio
             #validation epoch
             predictions, loss = val_fn(inp_val, out_val)
             dist, mean, std = evaluate(predictions, out_val)
-            eye_positions = np.array([calc_intersect(left, right) for [left, right] in predictions])
-            eye_error_dist, mean_eye_error, std_eye_error = evaluate(eye_positions, inp_val)
+            arm_positions = np.array([arm.move_arm(shoudler, elbow) for [shoudler, elbow] in predictions])
+            eye_error_dist, mean_eye_error, std_eye_error = evaluate(arm_positions, inp_val)
 
             n += 1
             total_mean += mean
@@ -266,23 +425,23 @@ def train_network(prototypes, train_data = 'train_data.p', val_data = 'validatio
 
     #Plots
     plt.figure()
-    distplot, = plt.plot(dists[10:], label = 'Eye distance error')
+    distplot, = plt.plot(dists, label = 'arm distance error')
     plt.legend(handles = [distplot])
-    plt.savefig('../images/eye_error.png')
+    plt.savefig('../images/arm_error.png')
     plt.show()
 
     plt.figure()
     meanplot, = plt.plot(means, label = 'mean')
     stdplot, = plt.plot(stds, label = 'std')
     plt.legend(handles = [meanplot, stdplot])
-    plt.savefig('../images/eye_angles.png')
+    plt.savefig('../images/arm_angles.png')
     plt.show()
 
     plt.figure()
     trainplot, = plt.plot(train_losses, label = 'train loss')
     valplot, = plt.plot(val_losses, label = 'val loss')
     plt.legend(handles = [trainplot, valplot])
-    plt.savefig('../images/eye_losses.png')
+    plt.savefig('../images/arm_losses.png')
     plt.show()
     
     print "saving network"
@@ -375,7 +534,7 @@ if __name__ == '__main__':
     Combine prototypes (for the eye network)
     Train the network
     """
-
+    """
     origin = 0 #make sure the eye and the arm have the same origin!
     arm = Arm(visualize = False, origin = origin)
     print 'Create arm proto'
@@ -391,8 +550,7 @@ if __name__ == '__main__':
 
     """
     origin = 0
-    eye = Eyes(visualize= False, origin = origin)
+    arm = Arm(visualize= False, origin = origin)
     #eye.create_dataset(n_datapoints=1000000)
-    proto = eye.create_prototypes((10,10))
-    train_network(proto, train_data='100000_train.p', val_data='100000_val.p')
-    """
+    proto = arm.create_prototypes((10,10))
+    train_network(proto)
