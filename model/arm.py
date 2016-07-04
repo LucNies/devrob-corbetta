@@ -84,21 +84,21 @@ class Arm(object):
         """
 
         def distance_to_default(q, *args):
-            q0 = np.array([math.radians(90),0])
+            q0 = np.array([math.radians(self.shoulder_angle),math.radians(self.elbow_angle)])
             weight = [1,1]
             return np.sqrt(np.sum([(qi - q0i)**2 * wi for qi, q0i, wi in zip(q, q0, weight)]))
 
-        def x_constraint(q, x):
-            x = (self.L*np.cos(math.radians(self.shoulder_angle)) + self.L*np.cos(math.radians(self.shoulder_angle) + math.radians(self.elbow_angle))) - x
-            return x
+        def x_constraint(q, xy):
+            new_x = (self.L*np.cos(math.radians(q[0])) + self.L*np.cos(math.radians(q[0]) + math.radians(q[1]))) - xy[0]
+            return new_x
 
-        def y_constraint(q, y):
-            y = (self.L*np.sin(math.radians(self.shoulder_angle)) + self.L*np.sin(math.radians(self.shoulder_angle) + math.radians(self.elbow_angle))) - y
-            return y
+        def y_constraint(q, xy):
+            new_y = (self.L*np.sin(math.radians(q[0])) + self.L*np.sin(math.radians(q[0]) + math.radians(q[1]))) - xy[1]
+            return new_y
 
-        angles= scipy.optimize.fmin_slsqp(func=distance_to_default,
+        angles = scipy.optimize.fmin_slsqp(func=distance_to_default,
                                           x0=[math.radians(self.shoulder_angle), math.radians(self.elbow_angle)], eqcons=[x_constraint, y_constraint],
-                                          args=((x,y),), iprint=0)
+                                          args=((x,y),))
         return [math.degrees(angle) for angle in angles]
 
     def move_arm(self, shoulder_angle, elbow_angle, redraw=True):
@@ -109,8 +109,6 @@ class Arm(object):
         """
         shoulder_angle *= (math.pi / 180)
         elbow_angle = shoulder_angle + elbow_angle*(math.pi / 180)
-        self.shoulder_angle = shoulder_angle
-        self.elbow_angle = elbow_angle
         self.elbow_joint = (self.shoulder_joint[0] + self.L * math.cos(shoulder_angle),
                             self.shoulder_joint[1] + self.L * math.sin(shoulder_angle))
         self.wrist_joint = (self.elbow_joint[0] + self.L * math.cos(elbow_angle),
