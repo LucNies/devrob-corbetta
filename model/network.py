@@ -387,6 +387,8 @@ def train_network(prototypes, train_data = 'train_data.p', val_data = 'validatio
     val_losses = np.zeros(epochs)
     dists = np.zeros(epochs)
 
+    arm = Arm(origin=0, visualize=False)
+
     print "Train network"
 
     for e in tqdm(range(epochs)):
@@ -405,8 +407,8 @@ def train_network(prototypes, train_data = 'train_data.p', val_data = 'validatio
             #validation epoch
             predictions, loss = val_fn(inp_val, out_val)
             dist, mean, std = evaluate(predictions, out_val)
-            eye_positions = np.array([calc_intersect(left, right) for [left, right] in predictions])
-            eye_error_dist, mean_eye_error, std_eye_error = evaluate(eye_positions, inp_val)
+            arm_positions = np.array([arm.move_arm(shoudler, elbow) for [shoudler, elbow] in predictions])
+            eye_error_dist, mean_eye_error, std_eye_error = evaluate(arm_positions, inp_val)
 
             n += 1
             total_mean += mean
@@ -423,23 +425,23 @@ def train_network(prototypes, train_data = 'train_data.p', val_data = 'validatio
 
     #Plots
     plt.figure()
-    distplot, = plt.plot(dists[10:], label = 'Eye distance error')
+    distplot, = plt.plot(dists, label = 'arm distance error')
     plt.legend(handles = [distplot])
-    plt.savefig('../images/eye_error.png')
+    plt.savefig('../images/arm_error.png')
     plt.show()
 
     plt.figure()
     meanplot, = plt.plot(means, label = 'mean')
     stdplot, = plt.plot(stds, label = 'std')
     plt.legend(handles = [meanplot, stdplot])
-    plt.savefig('../images/eye_angles.png')
+    plt.savefig('../images/arm_angles.png')
     plt.show()
 
     plt.figure()
     trainplot, = plt.plot(train_losses, label = 'train loss')
     valplot, = plt.plot(val_losses, label = 'val loss')
     plt.legend(handles = [trainplot, valplot])
-    plt.savefig('../images/eye_losses.png')
+    plt.savefig('../images/arm_losses.png')
     plt.show()
     
     print "saving network"
